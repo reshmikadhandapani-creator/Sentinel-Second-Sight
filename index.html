@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel: Evidence Storage & Usage Governance Hub</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0b1118;
+      --bg-elevated: #0d1c2e;
+      --bg-head: #122438;
+      --bg-row: #0e1a28;
+      --bg-row-alt: #101f30;
+      --bg-parent: #153048;
+      --border-subtle: #1e3348;
+      --text-primary: #ffffff;
+      --text-secondary: #b0bac9;
+      --accent-teal: #00a3cc;
+      --accent-teal-hover: #00b8e6;
+      --status-red: #44191c;
+      --status-red-text: #f87171;
+      --status-yellow: #44330d;
+      --status-yellow-text: #fbbf24;
+      --status-green: #0d4429;
+      --status-green-text: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .screen {
+      width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+    }
+
+    .screen-header {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #0f2235, #0b1724);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .screen-header h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .toolbar {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #0c1a29;
+    }
+
+    .search {
+      height: 38px;
+      width: 360px;
+      max-width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: #102235;
+      color: var(--text-primary);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--border-subtle);
+      background: #102235;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0 10px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .icon-btn:hover {
+      background: #143750;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .filter-btn {
+      border: 1px solid var(--border-subtle);
+      background: #102235;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: #143750;
+      color: var(--text-primary);
+    }
+
+    .filter-btn.active {
+      border-color: var(--accent-teal);
+      color: var(--accent-teal);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      font-weight: 700;
+      color: #d8e6f6;
+      background: #12273b;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 14px;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      font-size: 14px;
+      color: var(--text-primary);
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    tbody tr {
+      background: var(--bg-row);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-row-alt);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--bg-row-alt);
+    }
+
+    .expand-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .caret {
+      color: #9dc5df;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
+    .caret.expanded {
+      transform: rotate(90deg);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-red {
+      background: var(--status-red);
+      color: var(--status-red-text);
+      border: 1px solid var(--status-red-text);
+    }
+
+    .status-yellow {
+      background: var(--status-yellow);
+      color: var(--status-yellow-text);
+      border: 1px solid var(--status-yellow-text);
+    }
+
+    .status-green {
+      background: var(--status-green);
+      color: var(--status-green-text);
+      border: 1px solid var(--status-green-text);
+    }
+
+    .capacity-bar {
+      width: 100%;
+      height: 20px;
+      background: #0c1a29;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      margin-top: 4px;
+    }
+
+    .capacity-fill {
+      height: 100%;
+      background: var(--status-green-text);
+      transition: width 0.3s ease, background 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 4px;
+      color: #000;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .capacity-fill.warning {
+      background: var(--status-yellow-text);
+    }
+
+    .capacity-fill.critical {
+      background: var(--status-red-text);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .side-panel-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    .side-panel-overlay.show {
+      display: block;
+    }
+
+    .side-panel-popup {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100vh;
+      background: #153048;
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+      transition: right 0.3s ease;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-panel-popup.open {
+      right: 0;
+    }
+
+    .side-panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #1a3550;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .side-panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .close-panel-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .close-panel-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .side-panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #122438;
+    }
+
+    .side-panel-tab {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .side-panel-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .side-panel-tab.active {
+      color: var(--accent-teal);
+      border-bottom-color: var(--accent-teal);
+      background: rgba(0, 163, 204, 0.1);
+    }
+
+    .side-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .side-panel-tab-content {
+      display: none;
+    }
+
+    .side-panel-tab-content.active {
+      display: block;
+    }
+
+    .detail-group {
+      margin-bottom: 16px;
+    }
+
+    .detail-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0d1c2e;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .data-table th {
+      background: #12273b;
+      color: #d8e6f6;
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+    }
+
+    .data-table td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      background: #0e1a28;
+    }
+
+    .data-table tr:nth-child(even) td {
+      background: #101f30;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-subtle);
+      border-top-color: var(--accent-teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      background: var(--status-red);
+      border-left: 4px solid var(--status-red-text);
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      color: var(--status-red-text);
+    }
+
+    .info-message {
+      background: var(--bg-parent);
+      border-left: 4px solid var(--accent-teal);
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .metric-card {
+      background: #1a2f45;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-teal);
+    }
+
+    .contract-row-item {
+      background: #1e3a52;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .contract-expires-soon {
+      color: var(--status-yellow-text);
+      font-weight: 600;
+    }
+
+    .contract-expires-urgent {
+      color: var(--status-red-text);
+      font-weight: 600;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="side-panel-overlay" class="side-panel-overlay" onclick="closeDetailPanel()"></div>
+
+  <main class="screen">
+    <header class="screen-header">
+      <h1>Sentinel: Storage & Usage Governance</h1>
+    </header>
+
+    <section class="toolbar">
+      <input
+        class="search"
+        id="searchInput"
+        type="search"
+        placeholder="Search agencies..."
+        onkeyup="filterAgencies()"
+      />
+      <button class="icon-btn" onclick="clearSearch()" title="Clear search">✕</button>
+      <div class="filter-group">
+        <button class="filter-btn active" data-filter="all" onclick="filterByHealth(this)">All</button>
+        <button class="filter-btn" data-filter="red" onclick="filterByHealth(this)">🔴 Critical</button>
+        <button class="filter-btn" data-filter="yellow" onclick="filterByHealth(this)">🟡 Warning</button>
+        <button class="filter-btn" data-filter="green" onclick="filterByHealth(this)">🟢 Healthy</button>
+      </div>
+    </section>
+
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div id="content" class="hidden">
+      <section aria-label="Agencies table">
+        <table id="agencies-table">
+          <thead>
+            <tr>
+              <th>Agency</th>
+              <th>Health Status</th>
+              <th>Storage Usage</th>
+              <th>Camera Status</th>
+              <th>Contracts</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody id="agencies-tbody">
+          </tbody>
+        </table>
+      </section>
+      <div id="no-results" class="no-data hidden">No agencies found matching your filters.</div>
+    </div>
+  </main>
+
+  <div id="agency-detail-panel" class="side-panel-popup">
+    <div class="side-panel-header">
+      <h2 id="panel-agency-name">Agency Details</h2>
+      <button class="close-panel-btn" onclick="closeDetailPanel()">✕</button>
+    </div>
+
+    <div class="side-panel-tabs">
+      <button class="side-panel-tab active" onclick="switchDetailTab('storage')">Storage</button>
+      <button class="side-panel-tab" onclick="switchDetailTab('cameras')">Cameras</button>
+      <button class="side-panel-tab" onclick="switchDetailTab('contracts')">Contracts</button>
+    </div>
+
+    <div class="side-panel-content">
+      <div id="detail-storage" class="side-panel-tab-content active">
+        <div class="detail-group">
+          <div class="detail-label">Storage Capacity</div>
+          <div class="detail-value">
+            <div id="storage-current">0 GB</div>
+            <div class="capacity-bar">
+              <div id="storage-bar" class="capacity-fill" style="width: 0%">0%</div>
+            </div>
+            <div id="storage-limit" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Limit: 0 GB</div>
+          </div>
+        </div>
+
+        <div class="detail-group">
+          <div class="detail-label">Usage by Product</div>
+          <table class="data-table" id="storage-breakdown">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Purchased</th>
+                <th>Provisioned</th>
+              </tr>
+            </thead>
+            <tbody id="storage-breakdown-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="detail-cameras" class="side-panel-tab-content">
+        <div id="cameras-content">
+          <div class="info-message">Camera usage analysis from VMEL Metrics</div>
+          <table class="data-table" id="camera-table">
+            <thead>
+              <tr>
+                <th>Device Type</th>
+                <th>Authorized</th>
+                <th>Actual</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="camera-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="detail-contracts" class="side-panel-tab-content">
+        <div id="contracts-content">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global data
+    window.data = {
+      agencies: [],
+      contracts: [],
+      storage: {},
+      devices: {},
+      analysis: {}
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await loadData();
+        await analyzeAll();
+        renderDashboard();
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (error) {
+        console.error('Initialization error:', error);
+        showError('Failed to load data: ' + error.message);
+      }
+    });
+
+    // Load CSV files
+    async function loadData() {
+      try {
+        // Load Contracts
+        const contractsResp = await fetch('./data/Contracts Linked to CCadmin Status_data (3).csv');
+        const contractsText = await contractsResp.text();
+        const contractsParsed = Papa.parse(contractsText, { header: true, skipEmptyLines: true });
+        window.data.contracts = contractsParsed.data;
+
+        // Load VMEL Metrics
+        const vmelResp = await fetch('./data/Copy of VMEL Metrics - Metrics.csv');
+        const vmelText = await vmelResp.text();
+        const vmelParsed = Papa.parse(vmelText, { header: true, skipEmptyLines: true });
+        window.data.devices = buildDeviceMap(vmelParsed.data);
+
+        // Load Agency Storage
+        const storageResp = await fetch('./data/Copy of Storage Per Agency (USGov) - April 2026 - prod-agency-storage-size-202605.csv');
+        const storageText = await storageResp.text();
+        const storageParsed = Papa.parse(storageText, { header: true, skipEmptyLines: true });
+        window.data.storage = buildStorageMap(storageParsed.data);
+
+        // Build agency list from all sources
+        window.data.agencies = buildAgencyList();
+      } catch (error) {
+        throw new Error('CSV loading failed: ' + error.message);
+      }
+    }
+
+    function buildDeviceMap(devices) {
+      const map = {};
+      devices.forEach(row => {
+        const agency = row.Agency;
+        if (agency && agency.trim()) {
+          map[agency] = {
+            FourRE: parseInt(row.FourRE) || 0,
+            VISTA: parseInt(row.VISTA) || 0,
+            V300: parseInt(row.V300) || 0,
+            M500: parseInt(row.M500) || 0,
+            M500E: parseInt(row.M500E) || 0,
+            V700: parseInt(row.V700) || 0,
+            SVX: parseInt(row.SVX) || 0,
+            TotalUsers: parseInt(row.TotalUsers) || 0
+          };
+        }
+      });
+      return map;
+    }
+
+    function buildStorageMap(storage) {
+      const map = {};
+      storage.forEach(row => {
+        if (row.Agency && row.Agency.trim()) {
+          const bytes = parseFloat(row['Total Agency Size (Bytes)']) || 0;
+          const gib = bytes / (1024 ** 3);
+          map[row.Agency] = {
+            bytes,
+            gib,
+            gb: bytes / (1000 ** 3)
+          };
+        }
+      });
+      return map;
+    }
+
+    function buildAgencyList() {
+      const agencies = new Set();
+
+      // Get from devices (primary source)
+      Object.keys(window.data.devices).forEach(a => agencies.add(a));
+
+      // Add from storage
+      Object.keys(window.data.storage).forEach(a => agencies.add(a));
+
+      // Add from contracts
+      window.data.contracts.forEach(c => {
+        if (c['Account Name']) agencies.add(c['Account Name']);
+      });
+
+      return Array.from(agencies)
+        .filter(a => a.trim())
+        .sort()
+        .map(name => ({
+          name,
+          normalizedName: name.toLowerCase().trim()
+        }));
+    }
+
+    // Analysis functions
+    async function analyzeAll() {
+      window.data.analysis = {};
+      window.data.agencies.forEach(agency => {
+        window.data.analysis[agency.name] = analyzeAgency(agency.name);
+      });
+    }
+
+    function analyzeAgency(agencyName) {
+      const devices = window.data.devices[agencyName] || {};
+      const storage = window.data.storage[agencyName] || {};
+      const contracts = getAgencyContracts(agencyName);
+
+      return {
+        storageAnalysis: analyzeFixedStorageCapacity(agencyName, contracts, storage),
+        cameraAnalysis: analyzeUnlimitedCameraStorage(agencyName, contracts, devices),
+        contractAnalysis: analyzeContractExpiration(contracts),
+        health: null // Calculated after all analyses
+      };
+    }
+
+    function analyzeFixedStorageCapacity(agencyName, contracts, storage) {
+      const fixedContracts = contracts.filter(c =>
+        c['Item Description'] &&
+        c['Item Description'].includes('STORAGE') &&
+        !c['Item Description'].includes('UNLIMITED')
+      );
+
+      let totalPurchasedGB = 0;
+      let totalProvisionedGB = 0;
+
+      fixedContracts.forEach(c => {
+        const desc = c['Item Description'] || '';
+        const match = desc.match(/(\d+\.?\d*)\s*GB/i);
+        if (match) {
+          totalPurchasedGB += parseFloat(match[1]);
+        }
+      });
+
+      const currentGiB = storage.gib || 0;
+      const currentGB = currentGiB * 1.024; // Convert GiB to GB
+      const percentage = totalPurchasedGB > 0 ? (currentGB / totalPurchasedGB) * 100 : 0;
+
+      let status = 'green';
+      if (percentage >= 80 && percentage < 95) status = 'yellow';
+      if (percentage >= 95) status = 'red';
+
+      return {
+        currentGB: Math.round(currentGB * 100) / 100,
+        purchasedGB: totalPurchasedGB,
+        provisionedGB: totalProvisionedGB,
+        percentUsed: Math.round(percentage * 10) / 10,
+        status,
+        flag: percentage >= 80 ? `${Math.round(percentage)}% capacity used` : null
+      };
+    }
+
+    function analyzeUnlimitedCameraStorage(agencyName, contracts, devices) {
+      const unlimitedContracts = contracts.filter(c =>
+        c['Item Description'] &&
+        c['Item Description'].includes('UNLIMITED')
+      );
+
+      let authorizedCameras = {};
+      ['FourRE', 'VISTA', 'V300', 'M500', 'M500E', 'V700', 'SVX'].forEach(type => {
+        authorizedCameras[type] = 0;
+      });
+
+      unlimitedContracts.forEach(c => {
+        const desc = c['Item Description'] || '';
+        const qty = parseInt(c['Order $ Amount']) || 0;
+
+        if (desc.includes('BODY WORN')) authorizedCameras['BodyWorn'] = (authorizedCameras['BodyWorn'] || 0) + qty;
+        if (desc.includes('IN CAR') || desc.includes('IN-CAR')) authorizedCameras['InCar'] = (authorizedCameras['InCar'] || 0) + qty;
+      });
+
+      const actualCameras = {
+        FourRE: devices.FourRE || 0,
+        VISTA: devices.VISTA || 0,
+        V300: devices.V300 || 0,
+        M500: devices.M500 || 0,
+        M500E: devices.M500E || 0,
+        V700: devices.V700 || 0,
+        SVX: devices.SVX || 0
+      };
+
+      let totalActual = 0;
+      let overages = [];
+
+      Object.keys(actualCameras).forEach(type => {
+        const actual = actualCameras[type];
+        totalActual += actual;
+        if (actual > (authorizedCameras[type] || 0)) {
+          overages.push({
+            type,
+            actual,
+            authorized: authorizedCameras[type] || 0,
+            overage: actual - (authorizedCameras[type] || 0)
+          });
+        }
+      });
+
+      const status = overages.length > 0 ? 'red' : 'green';
+      return {
+        actualCameras,
+        authorizedCameras,
+        overages,
+        status,
+        flag: overages.length > 0 ? `${overages.length} device types over authorized` : null
+      };
+    }
+
+    function analyzeContractExpiration(contracts) {
+      const today = new Date();
+      let issues = [];
+
+      contracts.forEach(c => {
+        const endDateStr = c['Header End Date'] || '';
+        if (!endDateStr) return;
+
+        const endDate = new Date(endDateStr);
+        const daysUntil = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+
+        let status = 'green';
+        if (daysUntil < 0) status = 'red';
+        else if (daysUntil < 30) status = 'red';
+        else if (daysUntil < 60) status = 'yellow';
+        else if (daysUntil < 90) status = 'yellow';
+
+        if (daysUntil < 90) {
+          issues.push({
+            contract: c['Item Description'] || 'Unknown',
+            endDate: endDateStr,
+            daysUntil,
+            status
+          });
+        }
+      });
+
+      const worstStatus = issues.length === 0 ? 'green' :
+                          issues.some(i => i.status === 'red') ? 'red' : 'yellow';
+
+      return {
+        expiringContracts: issues,
+        status: worstStatus,
+        flag: issues.length > 0 ? `${issues.length} contract(s) expiring soon` : null
+      };
+    }
+
+    function getAgencyContracts(agencyName) {
+      return window.data.contracts.filter(c =>
+        c['Account Name'] && c['Account Name'].toLowerCase().includes(agencyName.toLowerCase())
+      );
+    }
+
+    // Calculate overall health
+    function calculateHealth(agencyName) {
+      const analysis = window.data.analysis[agencyName];
+      if (!analysis) return 'green';
+
+      const statuses = [
+        analysis.storageAnalysis.status,
+        analysis.cameraAnalysis.status,
+        analysis.contractAnalysis.status
+      ];
+
+      if (statuses.includes('red')) return 'red';
+      if (statuses.includes('yellow')) return 'yellow';
+      return 'green';
+    }
+
+    // Rendering
+    function renderDashboard() {
+      const tbody = document.getElementById('agencies-tbody');
+      tbody.innerHTML = '';
+
+      window.data.agencies.forEach(agency => {
+        const analysis = window.data.analysis[agency.name];
+        const health = calculateHealth(agency.name);
+        const storage = window.data.storage[agency.name];
+        const devices = window.data.devices[agency.name];
+
+        const row = document.createElement('tr');
+        row.onclick = () => openDetailPanel(agency.name);
+
+        const storageFlag = analysis.storageAnalysis.flag;
+        const cameraFlag = analysis.cameraAnalysis.flag;
+        const contractFlag = analysis.contractAnalysis.flag;
+
+        row.innerHTML = `
+          <td>
+            <div class="expand-cell">
+              <span class="caret">▶</span>
+              <span>${agency.name}</span>
+            </div>
+          </td>
+          <td>
+            <span class="status-badge status-${health}">● ${health.toUpperCase()}</span>
+          </td>
+          <td>
+            ${analysis.storageAnalysis.purchasedGB > 0
+              ? `${analysis.storageAnalysis.percentUsed}% (${Math.round(analysis.storageAnalysis.currentGB)}/${analysis.storageAnalysis.purchasedGB} GB)`
+              : 'N/A'
+            }
+            ${storageFlag ? `<div style="font-size: 11px; color: var(--status-yellow-text);">⚠ ${storageFlag}</div>` : ''}
+          </td>
+          <td>
+            ${analysis.cameraAnalysis.overages.length > 0
+              ? `<span class="status-badge status-red">⚠ Overage</span>`
+              : '<span class="status-badge status-green">✓ OK</span>'
+            }
+            ${cameraFlag ? `<div style="font-size: 11px; color: var(--status-red-text);">${cameraFlag}</div>` : ''}
+          </td>
+          <td>
+            ${contractFlag
+              ? `<span class="status-badge status-yellow">${contractFlag}</span>`
+              : '<span class="status-badge status-green">✓ OK</span>'
+            }
+          </td>
+          <td>${agency.name.split(',').pop()?.trim() || 'N/A'}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      updateNoResults();
+    }
+
+    function openDetailPanel(agencyName) {
+      document.getElementById('panel-agency-name').textContent = agencyName;
+      const analysis = window.data.analysis[agencyName];
+
+      // Storage tab
+      const storageAnalysis = analysis.storageAnalysis;
+      document.getElementById('storage-current').textContent = `${Math.round(storageAnalysis.currentGB * 10) / 10} GB`;
+      document.getElementById('storage-limit').textContent = `Limit: ${storageAnalysis.purchasedGB} GB`;
+
+      const barPercent = Math.min(100, storageAnalysis.percentUsed);
+      const barElement = document.getElementById('storage-bar');
+      barElement.style.width = barPercent + '%';
+      barElement.textContent = Math.round(barPercent) + '%';
+      barElement.classList.remove('warning', 'critical');
+      if (barPercent >= 80 && barPercent < 95) barElement.classList.add('warning');
+      if (barPercent >= 95) barElement.classList.add('critical');
+
+      const contracts = getAgencyContracts(agencyName);
+      const storageBreakdown = tbody => {
+        tbody.innerHTML = '';
+        const grouped = {};
+        contracts.forEach(c => {
+          const desc = c['Item Description'] || 'Other';
+          if (!grouped[desc]) grouped[desc] = { purchased: 0, provisioned: 0 };
+          const match = desc.match(/(\d+\.?\d*)\s*GB/i);
+          if (match) grouped[desc].purchased += parseFloat(match[1]);
+        });
+        Object.keys(grouped).forEach(desc => {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${desc}</td><td>${grouped[desc].purchased} GB</td><td>-</td>`;
+          tbody.appendChild(row);
+        });
+      };
+      storageBreakdown(document.getElementById('storage-breakdown-body'));
+
+      // Cameras tab
+      const cameras = window.data.devices[agencyName] || {};
+      const cameraTbody = document.getElementById('camera-table-body');
+      cameraTbody.innerHTML = '';
+      ['FourRE', 'VISTA', 'V300', 'M500', 'M500E', 'V700', 'SVX'].forEach(type => {
+        const actual = cameras[type] || 0;
+        const row = document.createElement('tr');
+        const status = actual > 0 ? '✓' : '-';
+        row.innerHTML = `
+          <td>${type}</td>
+          <td>-</td>
+          <td>${actual}</td>
+          <td>${status}</td>
+        `;
+        cameraTbody.appendChild(row);
+      });
+
+      // Contracts tab
+      const contractsContent = document.getElementById('contracts-content');
+      contractsContent.innerHTML = '';
+      analysis.contractAnalysis.expiringContracts.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'contract-row-item';
+        const statusClass = c.status === 'red' ? 'contract-expires-urgent' : 'contract-expires-soon';
+        item.innerHTML = `
+          <div class="detail-label">${c.contract}</div>
+          <div class="detail-value">${c.endDate}</div>
+          <div class="${statusClass}">${c.daysUntil} days remaining</div>
+        `;
+        contractsContent.appendChild(item);
+      });
+      if (analysis.contractAnalysis.expiringContracts.length === 0) {
+        contractsContent.innerHTML = '<div class="no-data">No contracts expiring within 90 days</div>';
+      }
+
+      const panel = document.getElementById('agency-detail-panel');
+      const overlay = document.getElementById('side-panel-overlay');
+      panel.classList.add('open');
+      overlay.classList.add('show');
+    }
+
+    function closeDetailPanel() {
+      document.getElementById('agency-detail-panel').classList.remove('open');
+      document.getElementById('side-panel-overlay').classList.remove('show');
+    }
+
+    function switchDetailTab(tabName) {
+      document.querySelectorAll('.side-panel-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.side-panel-tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('detail-' + tabName).classList.add('active');
+    }
+
+    function filterByHealth(btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterAgencies();
+    }
+
+    function filterAgencies() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const healthFilter = document.querySelector('.filter-btn.active').dataset.filter;
+      const tbody = document.getElementById('agencies-tbody');
+      let visibleCount = 0;
+
+      Array.from(tbody.children).forEach(row => {
+        const agencyName = row.textContent.toLowerCase();
+        const statusBadge = row.querySelector('.status-badge').textContent.toLowerCase();
+        const matchesSearch = agencyName.includes(searchTerm);
+
+        let matchesHealth = true;
+        if (healthFilter !== 'all') {
+          matchesHealth = statusBadge.includes(healthFilter);
+        }
+
+        if (matchesSearch && matchesHealth) {
+          row.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+
+      updateNoResults();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterAgencies();
+    }
+
+    function updateNoResults() {
+      const visible = document.querySelectorAll('#agencies-tbody tr:not(.hidden)').length;
+      document.getElementById('no-results').classList.toggle('hidden', visible > 0);
+    }
+
+    function showError(message) {
+      const content = document.getElementById('content');
+      content.innerHTML = `<div class="error-message">${message}</div>`;
+      content.classList.remove('hidden');
+      document.getElementById('loading').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
