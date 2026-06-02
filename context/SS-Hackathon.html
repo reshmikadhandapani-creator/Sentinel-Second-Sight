@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Silent Sentinel Hackathon</title>
+  <style>
+    :root {
+      --bg-main: #0b1118;
+      --bg-elevated: #0d1c2e;
+      --bg-head: #122438;
+      --bg-row: #0e1a28;
+      --bg-row-alt: #101f30;
+      --bg-parent: #153048;
+      --border-subtle: #1e3348;
+      --text-primary: #ffffff;
+      --text-secondary: #b0bac9;
+      --accent-teal: #00a3cc;
+      --accent-teal-hover: #00b8e6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .screen {
+      width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+    }
+
+    .screen-header {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #0f2235, #0b1724);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .screen-header h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .breadcrumb a {
+      color: var(--accent-teal);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .breadcrumb a:hover {
+      color: var(--accent-teal-hover);
+      text-decoration: underline;
+    }
+
+    .new-btn {
+      border: 1px solid #1b455f;
+      background: #0e2b40;
+      color: var(--text-primary);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .new-btn:hover {
+      background: #143750;
+    }
+
+    .toolbar {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #0c1a29;
+    }
+
+    .search {
+      height: 38px;
+      width: 360px;
+      max-width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: #102235;
+      color: var(--text-primary);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--border-subtle);
+      background: #102235;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0 10px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      font-weight: 700;
+      color: #d8e6f6;
+      background: #12273b;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 14px;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      font-size: 14px;
+      color: var(--text-primary);
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    tbody tr {
+      background: var(--bg-row);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--bg-row-alt);
+    }
+
+    .parent-row {
+      background: var(--bg-parent) !important;
+    }
+
+    .col-sno { width: 60px; }
+    .col-customer-id { width: 120px; }
+    .col-display-name { width: 280px; }
+    .col-usage { width: 100px; }
+    .col-category { width: 120px; }
+    .col-type { width: 120px; }
+    .col-city { width: 140px; }
+    .col-state { width: 80px; }
+    .col-actions { width: 100px; }
+
+    /* Nested Contract Table Styles */
+    .contract-table-row {
+      background: #1e3a52 !important;
+    }
+
+    .contracts-nested-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a2f45;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      margin: 8px 0;
+    }
+
+    .contracts-nested-table thead th {
+      background: #12273b;
+      color: #d8e6f6;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .contracts-nested-table tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      font-size: 13px;
+      color: var(--text-primary);
+      vertical-align: top;
+    }
+
+    .contracts-nested-table tbody tr {
+      background: #1e3a52;
+    }
+
+    .contracts-nested-table tbody tr:nth-child(even) {
+      background: #244566;
+    }
+
+    .contracts-nested-table tbody tr:hover {
+      background: #2a5178;
+      cursor: pointer;
+    }
+
+    .col-contract { width: 280px; }
+    .col-contract-end { width: 100px; }
+    .col-expires { width: 80px; }
+    .col-status { width: 80px; }
+    .col-purchased { width: 120px; }
+    .col-provisioned { width: 130px; }
+    .col-purchased-by { width: 160px; }
+    .col-end-user { width: 180px; }
+
+    .expand-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .caret {
+      color: #9dc5df;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease;
+    }
+
+    .caret:hover {
+      color: var(--accent-teal);
+    }
+
+    .caret.expanded {
+      transform: rotate(90deg);
+    }
+
+    .muted {
+      color: var(--text-secondary);
+    }
+
+    .child-record td:nth-child(2) {
+      padding-left: 44px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .service-row {
+      background: #1a2f45 !important;
+    }
+
+    .service-name {
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .contract-row {
+      background: #1e3a52 !important;
+    }
+
+    .contract-name {
+      color: var(--text-primary);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .contract-name:hover {
+      color: var(--accent-teal);
+      text-decoration: underline;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Expanded Views Styles */
+    .content-layout {
+      display: flex;
+      height: calc(100vh - 140px);
+    }
+
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .contracts-section {
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: var(--text-primary);
+    }
+
+    .contracts-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-elevated);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .contracts-table tbody tr:hover {
+      background: #1a2f45;
+      cursor: pointer;
+    }
+
+    .contract-link {
+      color: var(--accent-teal);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .contract-link:hover {
+      color: var(--accent-teal-hover);
+      text-decoration: underline;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-active {
+      background: #0d4429;
+      color: #4ade80;
+      border: 1px solid #22c55e;
+    }
+
+    .status-expiring {
+      background: #44330d;
+      color: #fbbf24;
+      border: 1px solid #f59e0b;
+    }
+
+    .status-expired {
+      background: #44191c;
+      color: #f87171;
+      border: 1px solid #ef4444;
+    }
+
+    .expires-soon {
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    .expires-normal {
+      color: var(--text-primary);
+    }
+
+    .back-btn {
+      background: #0e2b40;
+      border: 1px solid #1b455f;
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .back-btn:hover {
+      background: #143750;
+    }
+
+    .customer-info {
+      background: #153048;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .customer-info h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .customer-info p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Contract Details Panel Styles */
+    .side-panel {
+      width: 400px;
+      background: #153048;
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #1a3550;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #122438;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab.active {
+      color: var(--accent-teal);
+      border-bottom-color: var(--accent-teal);
+      background: rgba(0, 163, 204, 0.1);
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .detail-group {
+      margin-bottom: 20px;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .quantity-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .quantity-item {
+      background: #0d1c2e;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .quantity-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .quantity-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent-teal);
+    }
+
+    .serial-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .serial-item {
+      background: #0d1c2e;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .serial-number {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .serial-status {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .serial-active {
+      background: #0d4429;
+      color: #4ade80;
+    }
+
+    .serial-inactive {
+      background: #44191c;
+      color: #f87171;
+    }
+
+    .contract-overview {
+      background: #153048;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .contract-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 8px 0;
+    }
+
+    .contract-subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0 0 16px 0;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .action-btn-large {
+      background: #0e2b40;
+      border: 1px solid #1b455f;
+      color: var(--text-primary);
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn-large:hover {
+      background: #143750;
+    }
+
+    .action-btn-large.primary {
+      background: var(--accent-teal);
+      border-color: var(--accent-teal);
+      color: var(--bg-main);
+    }
+
+    .action-btn-large.primary:hover {
+      background: var(--accent-teal-hover);
+      border-color: var(--accent-teal-hover);
+    }
+
+    .action-btn-large.danger {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: white;
+    }
+
+    .action-btn-large.danger:hover {
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    /* Subscription Styles */
+    .subscription-row {
+      background: #1e3a52 !important;
+    }
+
+    .subscription-card {
+      background: #1a2f45;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 8px 0;
+    }
+
+    .subscription-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .subscription-title {
+      flex: 1;
+    }
+
+    .subscription-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .subscription-code {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: 'Courier New', monospace;
+    }
+
+    .subscription-status {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .days-remaining {
+      font-size: 12px;
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
+    .subscription-dates {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .subscription-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .deactivate-btn {
+      background: #dc2626;
+      border: 1px solid #dc2626;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .deactivate-btn:hover {
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .menu-btn {
+      background: #0e2b40;
+      border: 1px solid #1b455f;
+      color: var(--text-primary);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .menu-btn:hover {
+      background: #143750;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background: #0d1c2e;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      min-width: 120px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+
+    .dropdown-content a {
+      color: var(--text-primary);
+      padding: 8px 12px;
+      text-decoration: none;
+      display: block;
+      font-size: 13px;
+      transition: background 0.2s ease;
+    }
+
+    .dropdown-content a:hover {
+      background: #1a2f45;
+    }
+
+    .dropdown-content a:first-child {
+      border-radius: 6px 6px 0 0;
+    }
+
+    .dropdown-content a:last-child {
+      border-radius: 0 0 6px 6px;
+    }
+
+    .show {
+      display: block;
+    }
+
+    /* Right Side Panel Popup Styles */
+    .side-panel-popup {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100vh;
+      background: #153048;
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+      transition: right 0.3s ease;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-panel-popup.open {
+      right: 0;
+    }
+
+    .side-panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #1a3550;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .side-panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .close-panel-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .close-panel-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .side-panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #122438;
+    }
+
+    .side-panel-tab {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .side-panel-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .side-panel-tab.active {
+      color: var(--accent-teal);
+      border-bottom-color: var(--accent-teal);
+      background: rgba(0, 163, 204, 0.1);
+    }
+
+    .side-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .side-panel-tab-content {
+      display: none;
+    }
+
+    .side-panel-tab-content.active {
+      display: block;
+    }
+
+    /* Overlay for side panel */
+    .side-panel-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    .side-panel-overlay.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay for side panel -->
+  <div id="side-panel-overlay" class="side-panel-overlay" onclick="closeContractPanel()"></div>
+
+  <!-- View 1: Customer Dashboard -->
+  <div id="dashboard-view" class="view active">
+    <main class="screen" aria-label="Silent Sentinel Subscriptions Dashboard">
+      <header class="screen-header">
+        <h1>Customers (9)</h1>
+        <button class="new-btn" type="button">+ Create new customer</button>
+      </header>
+
+      <section class="toolbar" aria-label="Search and filter">
+        <input class="search" type="search" placeholder="Search customers..." aria-label="Search customers" />
+        <button class="icon-btn" type="button" aria-label="Clear search">✕</button>
+        <button class="icon-btn" type="button" aria-label="Filter">⛃</button>
+      </section>
+
+      <section aria-label="Customers table">
+        <table id="customers-table">
+          <thead>
+            <tr>
+              <th class="col-sno">S.No</th>
+              <th class="col-customer-id">Customer ID</th>
+              <th class="col-display-name">Display Name</th>
+              <th class="col-usage">Usage</th>
+              <th class="col-category">Category</th>
+              <th class="col-type">Type</th>
+              <th class="col-city">City</th>
+              <th class="col-state">State</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-customer="1">
+              <td>1</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(1)">▶</span>
+                <span>SS001</span>
+              </td>
+              <td>Miami-Dade Police Department</td>
+              <td>High</td>
+              <td>Law Enforcement</td>
+              <td>Government</td>
+              <td>Miami</td>
+              <td>FL</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="1-1">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">Smart Connect Voice</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="1-2">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">CommandCentral Records</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="1-3">
+              <td></td>
+              <td colspan="8">
+                <div class="expand-cell">
+                  <span class="caret" onclick="toggleCommandCentral(1)">▶</span>
+                  <span class="service-name">CommandCentral Evidence</span>
+                </div>
+              </td>
+            </tr>
+            <tr class="contract-table-row hidden">
+              <td colspan="9">
+                <table class="contracts-nested-table">
+                  <thead>
+                    <tr>
+                      <th class="col-sno">S.No</th>
+                      <th class="col-contract">Contract</th>
+                      <th class="col-contract-end">Contract End</th>
+                      <th class="col-expires">Expires In</th>
+                      <th class="col-status">Status</th>
+                      <th class="col-purchased">Purchased Storage</th>
+                      <th class="col-provisioned">Provisioned Storage</th>
+                      <th class="col-purchased-by">Purchased By</th>
+                      <th class="col-end-user">End User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr onclick="openContractDetails('Standard License Agreement')">
+                      <td>1</td>
+                      <td><a href="#" class="contract-name" onclick="event.stopPropagation(); openContractDetails('Standard License Agreement')">Standard License Agreement</a></td>
+                      <td>2028-03-03</td>
+                      <td class="expires-normal">675 days</td>
+                      <td><span class="status-badge status-active">Active</span></td>
+                      <td>50GB</td>
+                      <td>74GB</td>
+                      <td>BROWARD COUNTY FL</td>
+                      <td>broward.emergency.gov</td>
+                    </tr>
+                    <tr onclick="openContractDetails('Enterprise License Agreement')">
+                      <td>2</td>
+                      <td><a href="#" class="contract-name" onclick="event.stopPropagation(); openContractDetails('Enterprise License Agreement')">Enterprise License Agreement</a></td>
+                      <td>2027-12-15</td>
+                      <td class="expires-normal">596 days</td>
+                      <td><span class="status-badge status-active">Active</span></td>
+                      <td>250GB</td>
+                      <td>87GB</td>
+                      <td>MIAMI-DADE COUNTY</td>
+                      <td>miamidade.police.gov</td>
+                    </tr>
+                    <tr onclick="openContractDetails('Premium License Agreement')">
+                      <td>3</td>
+                      <td><a href="#" class="contract-name" onclick="event.stopPropagation(); openContractDetails('Premium License Agreement')">Premium License Agreement</a></td>
+                      <td>2026-08-30</td>
+                      <td class="expires-soon">89 days</td>
+                      <td><span class="status-badge status-expiring">Expiring Soon</span></td>
+                      <td>500GB</td>
+                      <td>234GB</td>
+                      <td>FLORIDA DEPT OF LAW ENFORCEMENT</td>
+                      <td>fdle.state.fl.us</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+
+            <tr data-customer="2">
+              <td>2</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(2)">▶</span>
+                <span>SS002</span>
+              </td>
+              <td>Los Angeles Police Department</td>
+              <td>High</td>
+              <td>Law Enforcement</td>
+              <td>Government</td>
+              <td>Los Angeles</td>
+              <td>CA</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="2-1">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">Smart Connect Voice</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="2-2">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">CommandCentral Records</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="2-3">
+              <td></td>
+              <td colspan="8">
+                <div class="expand-cell">
+                  <span class="caret" onclick="toggleCommandCentral(2)">▶</span>
+                  <span class="service-name">CommandCentral Evidence</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr data-customer="3">
+              <td>3</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(3)">▶</span>
+                <span>SS003</span>
+              </td>
+              <td>Chicago Fire Department</td>
+              <td>Medium</td>
+              <td>Fire/Rescue</td>
+              <td>Government</td>
+              <td>Chicago</td>
+              <td>IL</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="3-1">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">Smart Connect Voice</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="3-2">
+              <td></td>
+              <td colspan="8">
+                <div class="service-name">CommandCentral Records</div>
+              </td>
+            </tr>
+            <tr class="service-row hidden" data-service="3-3">
+              <td></td>
+              <td colspan="8">
+                <div class="expand-cell">
+                  <span class="caret" onclick="toggleCommandCentral(3)">▶</span>
+                  <span class="service-name">CommandCentral Evidence</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr data-customer="4">
+              <td>4</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(4)">▶</span>
+                <span>SS004</span>
+              </td>
+              <td>Houston Emergency Management</td>
+              <td>High</td>
+              <td>Emergency Management</td>
+              <td>Government</td>
+              <td>Houston</td>
+              <td>TX</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <tr data-customer="5">
+              <td>5</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(5)">▶</span>
+                <span>SS005</span>
+              </td>
+              <td>Phoenix Police Department</td>
+              <td>Medium</td>
+              <td>Law Enforcement</td>
+              <td>Government</td>
+              <td>Phoenix</td>
+              <td>AZ</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <tr data-customer="6">
+              <td>6</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(6)">▶</span>
+                <span>SS006</span>
+              </td>
+              <td>Philadelphia EMS</td>
+              <td>Medium</td>
+              <td>Medical Services</td>
+              <td>Government</td>
+              <td>Philadelphia</td>
+              <td>PA</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <tr data-customer="7">
+              <td>7</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(7)">▶</span>
+                <span>SS007</span>
+              </td>
+              <td>Dallas County Sheriff</td>
+              <td>High</td>
+              <td>Law Enforcement</td>
+              <td>Government</td>
+              <td>Dallas</td>
+              <td>TX</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <tr data-customer="8">
+              <td>8</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(8)">▶</span>
+                <span>SS008</span>
+              </td>
+              <td>San Diego Fire-Rescue</td>
+              <td>Medium</td>
+              <td>Fire/Rescue</td>
+              <td>Government</td>
+              <td>San Diego</td>
+              <td>CA</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+
+            <tr data-customer="9">
+              <td>9</td>
+              <td class="expand-cell">
+                <span class="caret" onclick="toggleCustomer(9)">▶</span>
+                <span>SS009</span>
+              </td>
+              <td>Detroit Police Department</td>
+              <td>Low</td>
+              <td>Law Enforcement</td>
+              <td>Government</td>
+              <td>Detroit</td>
+              <td>MI</td>
+              <td class="actions">
+                <button class="action-btn" title="Edit">✏️</button>
+                <button class="action-btn" title="Delete">🗑️</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- Right Side Panel for Contract Details -->
+    <div id="contract-side-panel" class="side-panel-popup">
+      <div class="side-panel-header">
+        <h2>Contract Details</h2>
+        <button class="close-panel-btn" onclick="closeContractPanel()">✕</button>
+      </div>
+
+      <div class="side-panel-tabs">
+        <button class="side-panel-tab active" onclick="switchSidePanelTab('contract-details')">Contract Details</button>
+        <button class="side-panel-tab" onclick="switchSidePanelTab('serial-numbers')">Serial Numbers</button>
+      </div>
+
+      <div class="side-panel-content">
+        <div id="side-panel-contract-details" class="side-panel-tab-content active">
+          <div class="detail-group">
+            <div class="detail-label">Purchasing Customer MCN</div>
+            <div class="detail-value">MCN123456789</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Contract End</div>
+            <div class="detail-value" id="side-panel-contract-end">2028-03-03</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Expires In</div>
+            <div class="detail-value" id="side-panel-expires">675 days</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Status</div>
+            <div class="detail-value" id="side-panel-status">
+              <span class="status-badge status-active">Active</span>
+            </div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Quantities</div>
+            <div class="quantity-grid">
+              <div class="quantity-item">
+                <div class="quantity-label">Purchased Storage</div>
+                <div class="quantity-value" id="side-panel-purchased">50GB</div>
+              </div>
+              <div class="quantity-item">
+                <div class="quantity-label">Provisioned Storage</div>
+                <div class="quantity-value" id="side-panel-provisioned">74GB</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Purchasing Customer Name</div>
+            <div class="detail-value" id="side-panel-customer">BROWARD COUNTY FL</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Purchasing Customer ID</div>
+            <div class="detail-value" id="side-panel-customer-id">cust1001@motorola.com</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">End User Customer ID</div>
+            <div class="detail-value" id="side-panel-end-user">broward.emergency.gov</div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Billing Address</div>
+            <div class="detail-value">
+              115 S Andrews Ave<br>
+              Fort Lauderdale, FL 33301<br>
+              United States
+            </div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Technical Contact</div>
+            <div class="detail-value">
+              John Smith<br>
+              Technical Director<br>
+              john.smith@broward.org<br>
+              +1 (954) 555-0123
+            </div>
+          </div>
+        </div>
+
+        <div id="side-panel-serial-numbers" class="side-panel-tab-content">
+          <div class="detail-group">
+            <div class="detail-label">Active Serial Numbers (14)</div>
+            <ul class="serial-list">
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-001</span>
+                <span class="serial-status serial-active">Active</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-002</span>
+                <span class="serial-status serial-active">Active</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-003</span>
+                <span class="serial-status serial-active">Active</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-004</span>
+                <span class="serial-status serial-active">Active</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-005</span>
+                <span class="serial-status serial-active">Active</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-label">Available Serial Numbers (111)</div>
+            <ul class="serial-list">
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-015</span>
+                <span class="serial-status serial-inactive">Available</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-016</span>
+                <span class="serial-status serial-inactive">Available</span>
+              </li>
+              <li class="serial-item">
+                <span class="serial-number">CCE-STD-2024-017</span>
+                <span class="serial-status serial-inactive">Available</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View 2: Expanded Contracts View -->
+  <div id="expanded-view" class="view">
+    <main class="screen" aria-label="CommandCentral Evidence Expanded View">
+      <header class="screen-header">
+        <div>
+          <div class="breadcrumb">
+            <a onclick="showView('dashboard')">Customers</a>
+            <span>›</span>
+            <a onclick="showView('dashboard')">Miami-Dade Police Department</a>
+            <span>›</span>
+            <span>CommandCentral Evidence</span>
+          </div>
+          <h1>CommandCentral Evidence Contracts</h1>
+        </div>
+        <a onclick="showView('dashboard')" class="back-btn">← Back to Dashboard</a>
+      </header>
+
+      <div class="content-layout">
+        <main class="main-content">
+          <section class="contracts-section">
+            <div class="customer-info">
+              <h3>Miami-Dade Police Department</h3>
+              <p><strong>Customer ID:</strong> SS001</p>
+              <p><strong>Location:</strong> Miami, FL</p>
+              <p><strong>Department:</strong> Law Enforcement</p>
+            </div>
+
+            <h2 class="section-title">Active Contracts</h2>
+            <table class="contracts-table">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Contract</th>
+                  <th>Contract End</th>
+                  <th>Expires In</th>
+                  <th>Status</th>
+                  <th>Purchased Storage</th>
+                  <th>Provisioned Storage</th>
+                  <th>Purchased By</th>
+                  <th>End User</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr onclick="openContractDetails('Standard License Agreement')">
+                  <td>1</td>
+                  <td><a href="#" class="contract-link" onclick="event.stopPropagation(); openContractDetails('Standard License Agreement')">Standard License Agreement</a></td>
+                  <td>2028-03-03</td>
+                  <td class="expires-normal">675 days</td>
+                  <td><span class="status-badge status-active">Active</span></td>
+                  <td>50GB</td>
+                  <td>74GB</td>
+                  <td>BROWARD COUNTY FL</td>
+                  <td>broward.emergency.gov</td>
+                </tr>
+                <tr onclick="openContractDetails('Enterprise License Agreement')">
+                  <td>2</td>
+                  <td><a href="#" class="contract-link" onclick="event.stopPropagation(); openContractDetails('Enterprise License Agreement')">Enterprise License Agreement</a></td>
+                  <td>2027-12-15</td>
+                  <td class="expires-normal">596 days</td>
+                  <td><span class="status-badge status-active">Active</span></td>
+                  <td>250GB</td>
+                  <td>87GB</td>
+                  <td>MIAMI-DADE COUNTY</td>
+                  <td>miamidade.police.gov</td>
+                </tr>
+                <tr onclick="openContractDetails('Premium License Agreement')">
+                  <td>3</td>
+                  <td><a href="#" class="contract-link" onclick="event.stopPropagation(); openContractDetails('Premium License Agreement')">Premium License Agreement</a></td>
+                  <td>2026-08-30</td>
+                  <td class="expires-soon">89 days</td>
+                  <td><span class="status-badge status-expiring">Expiring Soon</span></td>
+                  <td>500GB</td>
+                  <td>234GB</td>
+                  <td>FLORIDA DEPT OF LAW ENFORCEMENT</td>
+                  <td>fdle.state.fl.us</td>
+                </tr>
+                <tr onclick="openContractDetails('Basic License Agreement')">
+                  <td>4</td>
+                  <td><a href="#" class="contract-link" onclick="event.stopPropagation(); openContractDetails('Basic License Agreement')">Basic License Agreement</a></td>
+                  <td>2029-01-20</td>
+                  <td class="expires-normal">802 days</td>
+                  <td><span class="status-badge status-active">Active</span></td>
+                  <td>75GB</td>
+                  <td>32GB</td>
+                  <td>ORANGE COUNTY FL</td>
+                  <td>orange.sheriff.gov</td>
+                </tr>
+                <tr onclick="openContractDetails('Trial License Agreement')">
+                  <td>5</td>
+                  <td><a href="#" class="contract-link" onclick="event.stopPropagation(); openContractDetails('Trial License Agreement')">Trial License Agreement</a></td>
+                  <td>2025-12-31</td>
+                  <td class="expires-soon">31 days</td>
+                  <td><span class="status-badge status-expiring">Expiring Soon</span></td>
+                  <td>25GB</td>
+                  <td>8GB</td>
+                  <td>MIAMI BEACH PD</td>
+                  <td>miamibeach.police.gov</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </main>
+      </div>
+    </main>
+  </div>
+
+  <!-- View 3: Contract Details Panel -->
+  <div id="contract-details-view" class="view">
+    <main class="screen" aria-label="Contract Details Panel">
+      <section class="main-content">
+        <div class="breadcrumb">
+          <a onclick="showView('dashboard')">Customers</a>
+          <span>›</span>
+          <a onclick="showView('dashboard')">Miami-Dade Police Department</a>
+          <span>›</span>
+          <a onclick="showView('expanded')">CommandCentral Evidence</a>
+          <span>›</span>
+          <span id="contract-breadcrumb">Contract Details</span>
+        </div>
+
+        <a onclick="showView('expanded')" class="back-btn">← Back to Contracts</a>
+
+        <div class="contract-overview">
+          <h1 class="contract-title" id="contract-title">Standard License Agreement</h1>
+          <p class="contract-subtitle">CommandCentral Evidence License</p>
+          
+          <div class="detail-group">
+            <div class="detail-label">Contract Status</div>
+            <div id="contract-status">
+              <span class="status-badge status-active">Active</span>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button class="action-btn-large primary">📝 Edit Contract</button>
+            <button class="action-btn-large">📊 View Analytics</button>
+            <button class="action-btn-large">📄 Download PDF</button>
+            <button class="action-btn-large danger">🗑️ Terminate</button>
+          </div>
+        </div>
+
+        <div class="detail-group">
+          <h3>Contract Information</h3>
+          <div style="margin-top: 16px;">
+            <div class="detail-label">Contract ID</div>
+            <div class="detail-value">STD-CC-EVIDENCE-2024-001</div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="detail-label">Contract Type</div>
+            <div class="detail-value">Standard License Agreement</div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="detail-label">Start Date</div>
+            <div class="detail-value">2023-03-03</div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="detail-label">End Date</div>
+            <div class="detail-value">2028-03-03</div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="detail-label">Auto-Renewal</div>
+            <div class="detail-value">Enabled</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="panel-header">
+          <h2>Contract Details</h2>
+        </div>
+
+        <div class="panel-tabs">
+          <button class="tab active" onclick="switchTab('contract-details')">Contract Details</button>
+          <button class="tab" onclick="switchTab('serial-numbers')">Serial Numbers</button>
+        </div>
+
+        <div class="panel-content">
+          <div id="contract-details" class="tab-content active">
+            <div class="detail-group">
+              <div class="detail-label">Purchasing Customer MCN</div>
+              <div class="detail-value">MCN123456789</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Contract End</div>
+              <div class="detail-value">2028-03-03</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Expires In</div>
+              <div class="detail-value">675 days</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Status</div>
+              <div class="detail-value">
+                <span class="status-badge status-active">Active</span>
+              </div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Quantities</div>
+              <div class="quantity-grid">
+                <div class="quantity-item">
+                  <div class="quantity-label">Purchased Storage</div>
+                  <div class="quantity-value">50GB</div>
+                </div>
+                <div class="quantity-item">
+                  <div class="quantity-label">Provisioned Storage</div>
+                  <div class="quantity-value">74GB</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Purchasing Customer Name</div>
+              <div class="detail-value">BROWARD COUNTY FL</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Purchasing Customer ID</div>
+              <div class="detail-value">cust1001@motorola.com</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">End User Customer ID</div>
+              <div class="detail-value">broward.emergency.gov</div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Billing Address</div>
+              <div class="detail-value">
+                115 S Andrews Ave<br>
+                Fort Lauderdale, FL 33301<br>
+                United States
+              </div>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Technical Contact</div>
+              <div class="detail-value">
+                John Smith<br>
+                Technical Director<br>
+                john.smith@broward.org<br>
+                +1 (954) 555-0123
+              </div>
+            </div>
+          </div>
+
+          <div id="serial-numbers" class="tab-content">
+            <div class="detail-group">
+              <div class="detail-label">Active Serial Numbers (14)</div>
+              <ul class="serial-list">
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-001</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-002</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-003</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-004</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-005</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-006</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-007</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-008</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-009</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-010</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-011</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-012</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-013</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-014</span>
+                  <span class="serial-status serial-active">Active</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="detail-group">
+              <div class="detail-label">Available Serial Numbers (111)</div>
+              <ul class="serial-list">
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-015</span>
+                  <span class="serial-status serial-inactive">Available</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-016</span>
+                  <span class="serial-status serial-inactive">Available</span>
+                </li>
+                <li class="serial-item">
+                  <span class="serial-number">CCE-STD-2024-017</span>
+                  <span class="serial-status serial-inactive">Available</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    // View Management
+    function showView(viewName) {
+      // Hide all views
+      document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+      });
+      
+      // Show selected view
+      document.getElementById(viewName + '-view').classList.add('active');
+    }
+
+    // Dashboard Functions
+    function toggleCustomer(customerId) {
+      const caret = document.querySelector(`tr[data-customer="${customerId}"] .caret`);
+      const serviceRows = document.querySelectorAll(`tr[data-service^="${customerId}-"]`);
+      
+      if (caret.classList.contains('expanded')) {
+        caret.classList.remove('expanded');
+        caret.textContent = '▶';
+        serviceRows.forEach(row => row.classList.add('hidden'));
+      } else {
+        caret.classList.add('expanded');
+        caret.textContent = '▼';
+        serviceRows.forEach(row => row.classList.remove('hidden'));
+      }
+    }
+
+    function toggleCommandCentral(customerId) {
+      const caret = document.querySelector(`tr[data-service="${customerId}-3"] .caret`);
+      const contractTableRows = document.querySelectorAll('.contract-table-row');
+      
+      if (caret.classList.contains('expanded')) {
+        caret.classList.remove('expanded');
+        caret.textContent = '▶';
+        contractTableRows.forEach(row => row.classList.add('hidden'));
+      } else {
+        caret.classList.add('expanded');
+        caret.textContent = '▼';
+        contractTableRows.forEach(row => row.classList.remove('hidden'));
+      }
+    }
+
+    // Subscription Functions
+    function toggleDropdown(menuId) {
+      const dropdown = document.getElementById(menuId);
+      
+      // Close all other dropdowns
+      document.querySelectorAll('.dropdown-content').forEach(content => {
+        if (content.id !== menuId) {
+          content.classList.remove('show');
+        }
+      });
+      
+      // Toggle current dropdown
+      dropdown.classList.toggle('show');
+      
+      // Close dropdown when clicking outside
+      event.stopPropagation();
+    }
+
+    function renewSubscription(subscriptionCode) {
+      alert(`Renewing subscription: ${subscriptionCode}`);
+      closeAllDropdowns();
+    }
+
+    function terminateSubscription(subscriptionCode) {
+      if (confirm(`Are you sure you want to terminate subscription: ${subscriptionCode}?`)) {
+        alert(`Terminated subscription: ${subscriptionCode}`);
+        closeAllDropdowns();
+      }
+    }
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('.dropdown-content').forEach(content => {
+        content.classList.remove('show');
+      });
+    }
+
+    // Close dropdowns when clicking anywhere else on the page
+    document.addEventListener('click', function(event) {
+      if (!event.target.matches('.menu-btn')) {
+        closeAllDropdowns();
+      }
+    });
+
+    function openContractDetails(contractName) {
+      // Update side panel with contract details
+      updateSidePanelContractDetails(contractName);
+      
+      // Show the right side panel
+      showContractPanel();
+    }
+
+    // Right Side Panel Functions
+    function showContractPanel() {
+      const panel = document.getElementById('contract-side-panel');
+      const overlay = document.getElementById('side-panel-overlay');
+      panel.classList.add('open');
+      overlay.classList.add('show');
+    }
+
+    function closeContractPanel() {
+      const panel = document.getElementById('contract-side-panel');
+      const overlay = document.getElementById('side-panel-overlay');
+      panel.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+
+    function switchSidePanelTab(tabName) {
+      // Remove active class from all tabs and contents
+      document.querySelectorAll('.side-panel-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.side-panel-tab-content').forEach(content => content.classList.remove('active'));
+      
+      // Add active class to selected tab and content
+      event.target.classList.add('active');
+      document.getElementById('side-panel-' + tabName).classList.add('active');
+    }
+
+    function updateSidePanelContractDetails(contractName) {
+      const contractData = {
+        'Standard License Agreement': {
+          status: 'active',
+          purchasedQty: '50GB',
+          provisionedQty: '74GB',
+          endDate: '2028-03-03',
+          expires: '675 days',
+          customer: 'BROWARD COUNTY FL',
+          customerId: 'cust1001@motorola.com',
+          endUser: 'broward.emergency.gov'
+        },
+        'Enterprise License Agreement': {
+          status: 'active',
+          purchasedQty: '250GB',
+          provisionedQty: '87GB',
+          endDate: '2027-12-15',
+          expires: '596 days',
+          customer: 'MIAMI-DADE COUNTY',
+          customerId: 'cust1002@motorola.com',
+          endUser: 'miamidade.police.gov'
+        },
+        'Premium License Agreement': {
+          status: 'expiring',
+          purchasedQty: '500GB',
+          provisionedQty: '234GB',
+          endDate: '2026-08-30',
+          expires: '89 days',
+          customer: 'FLORIDA DEPT OF LAW ENFORCEMENT',
+          customerId: 'cust1003@motorola.com',
+          endUser: 'fdle.state.fl.us'
+        }
+      };
+
+      const data = contractData[contractName];
+      if (data) {
+        // Update status badge
+        const statusElement = document.getElementById('side-panel-status');
+        statusElement.innerHTML = `<span class="status-badge status-${data.status}">${data.status.charAt(0).toUpperCase() + data.status.slice(1)}</span>`;
+        
+        // Update quantities
+        document.getElementById('side-panel-purchased').textContent = data.purchasedQty;
+        document.getElementById('side-panel-provisioned').textContent = data.provisionedQty;
+        
+        // Update other details
+        document.getElementById('side-panel-contract-end').textContent = data.endDate;
+        document.getElementById('side-panel-expires').textContent = data.expires;
+        document.getElementById('side-panel-customer').textContent = data.customer;
+        document.getElementById('side-panel-customer-id').textContent = data.customerId;
+        document.getElementById('side-panel-end-user').textContent = data.endUser;
+      }
+    }
+
+    // Contract Details Functions
+    function switchTab(tabName) {
+      // Remove active class from all tabs and contents
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      // Add active class to selected tab and content
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    function updateContractDetails(contractName) {
+      const contractData = {
+        'Standard License Agreement': {
+          status: 'active',
+          purchasedQty: '50GB',
+          provisionedQty: '74GB',
+          endDate: '2028-03-03',
+          expires: '675 days',
+          customer: 'BROWARD COUNTY FL',
+          customerId: 'cust1001@motorola.com',
+          endUser: 'broward.emergency.gov'
+        },
+        'Enterprise License Agreement': {
+          status: 'active',
+          purchasedQty: '250GB',
+          provisionedQty: '87GB',
+          endDate: '2027-12-15',
+          expires: '596 days',
+          customer: 'MIAMI-DADE COUNTY',
+          customerId: 'cust1002@motorola.com',
+          endUser: 'miamidade.police.gov'
+        },
+        'Premium License Agreement': {
+          status: 'expiring',
+          purchasedQty: '500GB',
+          provisionedQty: '234GB',
+          endDate: '2026-08-30',
+          expires: '89 days',
+          customer: 'FLORIDA DEPT OF LAW ENFORCEMENT',
+          customerId: 'cust1003@motorola.com',
+          endUser: 'fdle.state.fl.us'
+        },
+        'Basic License Agreement': {
+          status: 'active',
+          purchasedQty: '75GB',
+          provisionedQty: '32GB',
+          endDate: '2029-01-20',
+          expires: '802 days',
+          customer: 'ORANGE COUNTY FL',
+          customerId: 'cust1004@motorola.com',
+          endUser: 'orange.sheriff.gov'
+        },
+        'Trial License Agreement': {
+          status: 'expiring',
+          purchasedQty: '25GB',
+          provisionedQty: '8GB',
+          endDate: '2025-12-31',
+          expires: '31 days',
+          customer: 'MIAMI BEACH PD',
+          customerId: 'cust1005@motorola.com',
+          endUser: 'miamibeach.police.gov'
+        }
+      };
+
+      const data = contractData[contractName];
+      if (data) {
+        // Update status badge
+        const statusElement = document.getElementById('contract-status');
+        statusElement.innerHTML = `<span class="status-badge status-${data.status}">${data.status.charAt(0).toUpperCase() + data.status.slice(1)}</span>`;
+        
+        // Update quantities
+        const quantityValues = document.querySelectorAll('.quantity-value');
+        if (quantityValues[0]) quantityValues[0].textContent = data.purchasedQty;
+        if (quantityValues[1]) quantityValues[1].textContent = data.provisionedQty;
+        
+        // Update other details
+        const detailValues = document.querySelectorAll('#contract-details .detail-value');
+        detailValues[1].textContent = data.endDate; // Contract End
+        detailValues[2].textContent = data.expires; // Expires In
+        detailValues[4].textContent = data.purchasedQty; // Purchased Storage
+        detailValues[5].textContent = data.provisionedQty; // Provisioned Storage
+        detailValues[6].textContent = data.customer; // Purchasing Customer Name
+        detailValues[7].textContent = data.customerId; // Purchasing Customer ID
+        detailValues[8].textContent = data.endUser; // End User Customer ID
+      }
+    }
+  </script>
+</body>
+</html>
