@@ -678,9 +678,13 @@
 
     function buildStorageByDept(storageData) {
       const map = {};
+      let rowsProcessed = 0;
+      let rowsWithStorage = 0;
+
       storageData.forEach(row => {
+        rowsProcessed++;
         const dept = row['DepartmentName']?.trim();
-        if (!dept || dept === '#N/A') return;
+        if (!dept || dept === '#N/A' || dept === '') return;
 
         // Use most recent billing period per department
         if (!map[dept] || new Date(row['BillingPeriodEndDate']) > new Date(map[dept].date)) {
@@ -691,16 +695,22 @@
           const hot = parseFloat(row['Hot LRS Data Stored']) || 0;
           const totalMiB = archive + cold + cool + hot;
 
-          // Convert MiB → GiB → GB
-          const totalGiB = totalMiB / 1024;
-          const totalGB = totalGiB * 1.073741824;
+          // Only store if there's actual storage data
+          if (totalMiB > 0) {
+            // Convert MiB → GiB → GB
+            const totalGiB = totalMiB / 1024;
+            const totalGB = totalGiB * 1.073741824;
 
-          map[dept] = {
-            date: row['BillingPeriodEndDate'],
-            gb: totalGB
-          };
+            map[dept] = {
+              date: row['BillingPeriodEndDate'],
+              gb: totalGB
+            };
+            rowsWithStorage++;
+          }
         }
       });
+
+      console.log(`Storage CSV: processed ${rowsProcessed} rows, found ${rowsWithStorage} departments with storage, mapped ${Object.keys(map).length} unique departments`);
       return map;
     }
 
@@ -812,6 +822,7 @@
       }
 
       // Link storage data using department name matching
+      let storageMatched = 0;
       for (const deptName in storageByDept) {
         const normalizedDept = normalize(deptName);
         const mcn = accountNameLower[normalizedDept] ||
@@ -819,16 +830,13 @@
 
         if (mcn && mcnIndex[mcn]) {
           mcnIndex[mcn].storage = storageByDept[deptName];
-          // Debug logging for Texas DPS
-          if (deptName.includes('Texas') && deptName.includes('Public')) {
-            console.log('✓ Matched storage for:', deptName, 'to MCN:', mcn, mcnIndex[mcn].accountName, storageByDept[deptName].gb.toFixed(2), 'GB');
-          }
-        } else if (deptName.includes('Texas') && deptName.includes('Public')) {
-          console.log('✗ No match found for:', deptName, '(normalized:', normalizedDept, ')');
+          storageMatched++;
         }
       }
+      console.log(`Storage matching: ${storageMatched}/${Object.keys(storageByDept).length} departments matched to MCNs`);
 
       // Link active cameras using department name matching
+      let camerasMatched = 0;
       for (const deptName in camerasByDept) {
         const normalizedDept = normalize(deptName);
         const mcn = accountNameLower[normalizedDept] ||
@@ -836,8 +844,10 @@
 
         if (mcn && mcnIndex[mcn]) {
           mcnIndex[mcn].activeCameras = camerasByDept[deptName];
+          camerasMatched++;
         }
       }
+      console.log(`Camera matching: ${camerasMatched}/${Object.keys(camerasByDept).length} departments matched to MCNs`);
 
       // Fallback: Link old storage using CCAdmin IDs
       oldStorageData.forEach(storageRow => {
@@ -861,9 +871,25 @@
       // Filter to only MCNs with complete data mapping
       const filteredIndex = {};
       for (const mcn in mcnIndex) {
-        if (mcnIndex[mcn].contracts.length > 0 && (mcnIndex[mcn].devices || mcnIndex[mcn].storage)) {
+        if (mcnIndex[mcn].contracts.length > 0 && (mcnIndex[mcn].devices || mcnIndex[mcn].storage || mcnIndex[mcn].activeCameras)) {
           filteredIndex[mcn] = mcnIndex[mcn];
         }
+      }
+
+      console.log(`MCN Index: ${Object.keys(mcnIndex).length} total MCNs, ${Object.keys(filteredIndex).length} with data for display`);
+
+      // Log Texas DPS specifically
+      const texasMCN = '1000031196';
+      if (filteredIndex[texasMCN]) {
+        const texas = filteredIndex[texasMCN];
+        console.log(`Texas DPS (${texasMCN}):`, {
+          accountName: texas.accountName,
+          hasStorage: !!texas.storage,
+          storageGB: texas.storage?.gb?.toFixed(2),
+          hasDevices: !!texas.devices,
+          hasActiveCameras: !!texas.activeCameras,
+          contracts: texas.contracts.length
+        });
       }
 
       return filteredIndex;
