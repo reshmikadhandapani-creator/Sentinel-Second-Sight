@@ -548,6 +548,7 @@
         </table>
       </section>
       <div id="no-results" class="no-data hidden">No agencies found matching your filters.</div>
+      <div id="pagination-controls" style="padding: 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: center; align-items: center; background: var(--bg-elevated);"></div>
     </div>
   </main>
 
@@ -623,14 +624,26 @@
       contracts: [],
       storage: {},
       devices: {},
-      analysis: {}
+      analysis: {},
+      allMCNs: [], // All MCNs in original order
+      filteredMCNs: [], // Filtered MCNs for display
+      filters: {
+        searchTerm: '',
+        healthFilter: 'all'
+      },
+      pagination: {
+        currentPage: 1,
+        pageSize: 25,
+        totalPages: 0
+      }
     };
 
     // Initialize
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await loadData();
-        await analyzeAll();
+        // Don't analyze all agencies upfront - do it lazily on demand
+        initializePagination();
         renderDashboard();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
@@ -969,12 +982,32 @@
       return matrix[b.length][a.length];
     }
 
-    // Analysis functions
-    async function analyzeAll() {
-      window.data.analysis = {};
-      for (const mcn in window.data.mcnData) {
+    // Lazy analysis - only analyze when needed
+    function getOrAnalyzeAgency(mcn) {
+      if (!window.data.analysis[mcn]) {
         const mcnRecord = window.data.mcnData[mcn];
         window.data.analysis[mcn] = analyzeAgency(mcn, mcnRecord);
+      }
+      return window.data.analysis[mcn];
+    }
+
+    function initializePagination() {
+      // Get all MCNs sorted by account name
+      window.data.allMCNs = Object.keys(window.data.mcnData).sort((a, b) => {
+        const nameA = window.data.mcnData[a].accountName || '';
+        const nameB = window.data.mcnData[b].accountName || '';
+        return nameA.localeCompare(nameB);
+      });
+      window.data.filteredMCNs = [...window.data.allMCNs]; // Initially show all
+      updatePaginationData();
+      console.log(`Pagination: ${window.data.allMCNs.length} agencies, ${window.data.pagination.totalPages} pages of ${window.data.pagination.pageSize}`);
+    }
+
+    function updatePaginationData() {
+      window.data.pagination.totalPages = Math.ceil(window.data.filteredMCNs.length / window.data.pagination.pageSize);
+      // Reset to page 1 if current page is out of bounds
+      if (window.data.pagination.currentPage > window.data.pagination.totalPages) {
+        window.data.pagination.currentPage = Math.max(1, window.data.pagination.totalPages);
       }
     }
 
@@ -1343,13 +1376,20 @@
       return 'green';
     }
 
-    // Rendering
+    // Rendering with pagination
     function renderDashboard() {
       const tbody = document.getElementById('agencies-tbody');
       tbody.innerHTML = '';
 
-      for (const mcn in window.data.analysis) {
-        const analysis = window.data.analysis[mcn];
+      const { currentPage, pageSize } = window.data.pagination;
+      const startIdx = (currentPage - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const pageAgencies = window.data.filteredMCNs.slice(startIdx, endIdx);
+
+      console.log(`Rendering page ${currentPage}: agencies ${startIdx + 1}-${Math.min(endIdx, window.data.filteredMCNs.length)} of ${window.data.filteredMCNs.length}`);
+
+      pageAgencies.forEach(mcn => {
+        const analysis = getOrAnalyzeAgency(mcn); // Lazy analysis
         const health = calculateHealth(mcn);
         const mcnRecord = window.data.mcnData[mcn];
 
@@ -1397,9 +1437,41 @@
         `;
 
         tbody.appendChild(row);
-      }
+      });
 
       updateNoResults();
+      updatePaginationControls();
+    }
+
+    function updatePaginationControls() {
+      const { currentPage, totalPages } = window.data.pagination;
+      const controlsDiv = document.getElementById('pagination-controls');
+      if (!controlsDiv) return;
+
+      if (window.data.filteredMCNs.length === 0) {
+        controlsDiv.innerHTML = '';
+        return;
+      }
+
+      const startNum = (currentPage - 1) * window.data.pagination.pageSize + 1;
+      const endNum = Math.min(currentPage * window.data.pagination.pageSize, window.data.filteredMCNs.length);
+
+      controlsDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="icon-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>
+          <span style="color: var(--text-secondary); font-size: 14px;">
+            Showing ${startNum}-${endNum} of ${window.data.filteredMCNs.length} agencies (Page ${currentPage} of ${totalPages})
+          </span>
+          <button class="icon-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>
+        </div>
+      `;
+    }
+
+    function changePage(newPage) {
+      const { totalPages } = window.data.pagination;
+      if (newPage < 1 || newPage > totalPages) return;
+      window.data.pagination.currentPage = newPage;
+      renderDashboard();
     }
 
     function openDetailPanel(mcn) {
@@ -1653,44 +1725,54 @@
     function filterByHealth(btn) {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      filterAgencies();
+      window.data.filters.healthFilter = btn.dataset.filter;
+      applyFilters();
     }
 
     function filterAgencies() {
-      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      const healthFilter = document.querySelector('.filter-btn.active').dataset.filter;
-      const tbody = document.getElementById('agencies-tbody');
-      let visibleCount = 0;
+      window.data.filters.searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      applyFilters();
+    }
 
-      Array.from(tbody.children).forEach(row => {
-        const agencyName = row.textContent.toLowerCase();
-        const statusBadge = row.querySelector('.status-badge').textContent.toLowerCase();
-        const matchesSearch = agencyName.includes(searchTerm);
+    function applyFilters() {
+      const { searchTerm, healthFilter } = window.data.filters;
 
-        let matchesHealth = true;
+      // Filter the MCN list
+      window.data.filteredMCNs = window.data.allMCNs.filter(mcn => {
+        const mcnRecord = window.data.mcnData[mcn];
+        const accountName = (mcnRecord.accountName || '').toLowerCase();
+
+        // Search filter
+        if (searchTerm && !accountName.includes(searchTerm)) {
+          return false;
+        }
+
+        // Health filter (analyze on demand)
         if (healthFilter !== 'all') {
-          matchesHealth = statusBadge.includes(healthFilter);
+          const health = calculateHealth(mcn);
+          if (health !== healthFilter) {
+            return false;
+          }
         }
 
-        if (matchesSearch && matchesHealth) {
-          row.classList.remove('hidden');
-          visibleCount++;
-        } else {
-          row.classList.add('hidden');
-        }
+        return true;
       });
 
-      updateNoResults();
+      // Reset to page 1 and update
+      window.data.pagination.currentPage = 1;
+      updatePaginationData();
+      renderDashboard();
     }
 
     function clearSearch() {
       document.getElementById('searchInput').value = '';
-      filterAgencies();
+      window.data.filters.searchTerm = '';
+      applyFilters();
     }
 
     function updateNoResults() {
-      const visible = document.querySelectorAll('#agencies-tbody tr:not(.hidden)').length;
-      document.getElementById('no-results').classList.toggle('hidden', visible > 0);
+      const noResults = document.getElementById('no-results');
+      noResults.classList.toggle('hidden', window.data.filteredMCNs.length > 0);
     }
 
     function showError(message) {
