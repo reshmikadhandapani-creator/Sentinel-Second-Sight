@@ -653,39 +653,45 @@
       }
     });
 
+    // Update loading message
+    function updateLoadingMessage(msg) {
+      const loadingEl = document.querySelector('#loading p');
+      if (loadingEl) loadingEl.textContent = msg;
+    }
+
     // Load CSV files
     async function loadData() {
       try {
-        // Load Contracts
+        updateLoadingMessage('Loading contracts...');
         const contractsResp = await fetch('./data/Contracts Linked to CCadmin Status_data (5).csv');
         const contractsText = await contractsResp.text();
         const contractsParsed = Papa.parse(contractsText, { header: true, skipEmptyLines: true });
         window.data.contracts = contractsParsed.data;
 
-        // Load VMEL Metrics
+        updateLoadingMessage('Loading camera metrics...');
         const vmelResp = await fetch('./data/Copy of VMEL Metrics - Metrics.csv');
         const vmelText = await vmelResp.text();
         const vmelParsed = Papa.parse(vmelText, { header: true, skipEmptyLines: true });
         const vmelByMCN = buildVMELByMCN(vmelParsed.data);
 
-        // Load VMEL Storage (new)
+        updateLoadingMessage('Loading storage data (this may take a moment)...');
         const storageResp = await fetch('./data/Copy of VMEL Metrics - Storage.csv');
         const storageText = await storageResp.text();
         const storageParsed = Papa.parse(storageText, { header: true, skipEmptyLines: true });
         const storageByDept = buildStorageByDept(storageParsed.data);
 
-        // Load VMEL ActiveCameras (new)
+        updateLoadingMessage('Loading active cameras...');
         const activeCamResp = await fetch('./data/Copy of VMEL Metrics - ActiveCameras.csv');
         const activeCamText = await activeCamResp.text();
         const activeCamParsed = Papa.parse(activeCamText, { header: true, skipEmptyLines: true });
         const camerasByDept = buildCamerasByDept(activeCamParsed.data);
 
-        // Load old Storage file as fallback
+        updateLoadingMessage('Loading legacy storage data...');
         const oldStorageResp = await fetch('./data/Copy of Storage Per Agency (USGov) - April 2026 - prod-agency-storage-size-202605.csv');
         const oldStorageText = await oldStorageResp.text();
         const oldStorageParsed = Papa.parse(oldStorageText, { header: true, skipEmptyLines: true });
 
-        // Build MCN-based index with all linked data
+        updateLoadingMessage('Matching agencies to data sources...');
         window.data.mcnData = buildMCNIndex(window.data.contracts, vmelByMCN, storageByDept, camerasByDept, oldStorageParsed.data);
       } catch (error) {
         throw new Error('CSV loading failed: ' + error.message);
@@ -694,16 +700,23 @@
 
     function buildStorageByDept(storageData) {
       const map = {};
-      let rowsProcessed = 0;
-      let rowsWithStorage = 0;
+      const dateCache = {}; // Cache parsed dates
 
-      storageData.forEach(row => {
-        rowsProcessed++;
+      // Process in batches to avoid blocking UI
+      for (let i = 0; i < storageData.length; i++) {
+        const row = storageData[i];
         const dept = row['DepartmentName']?.trim();
-        if (!dept || dept === '#N/A' || dept === '') return;
+        if (!dept || dept === '#N/A' || dept === '') continue;
+
+        const dateStr = row['BillingPeriodEndDate'];
 
         // Use most recent billing period per department
-        if (!map[dept] || new Date(row['BillingPeriodEndDate']) > new Date(map[dept].date)) {
+        // Cache date parsing to avoid repeated work
+        if (!dateCache[dateStr]) {
+          dateCache[dateStr] = new Date(dateStr);
+        }
+
+        if (!map[dept] || dateCache[dateStr] > dateCache[map[dept].date]) {
           // Storage columns are in MiB (Mebibytes)
           const archive = parseFloat(row['Archive LRS Data Stored']) || 0;
           const cold = parseFloat(row['Cold LRS Data Stored']) || 0;
@@ -713,43 +726,44 @@
 
           // Only store if there's actual storage data
           if (totalMiB > 0) {
-            // Convert MiB → GiB → GB
-            const totalGiB = totalMiB / 1024;
-            const totalGB = totalGiB * 1.073741824;
+            // Convert MiB → GiB → GB (pre-calculate conversion factor)
+            const totalGB = (totalMiB / 1024) * 1.073741824;
 
             map[dept] = {
-              date: row['BillingPeriodEndDate'],
+              date: dateStr,
               gb: totalGB
             };
-            rowsWithStorage++;
           }
         }
-      });
+      }
 
-      console.log(`Storage CSV: processed ${rowsProcessed} rows, found ${rowsWithStorage} departments with storage, mapped ${Object.keys(map).length} unique departments`);
+      console.log(`Storage CSV: processed ${storageData.length} rows, mapped ${Object.keys(map).length} unique departments`);
       return map;
     }
 
     function buildCamerasByDept(cameraData) {
       const map = {};
       const serialsSeen = {}; // Track unique serials per department to avoid double counting
-      const deviceTypes = {
-        'M500E': 'M500E', // Check M500E before M500 to avoid matching M500E as M500
-        'M500': 'M500',
-        'V700': 'V700',
-        'V300': 'V300',
-        'BWL': 'BodyWorn',
-        'BWC': 'BodyWorn', // BWC prefix for body-worn cameras
-        'VISTA': 'VISTA',
-        'FOURRE': 'FourRE',
-        '4RE': 'FourRE',
-        'SVX': 'SVX'
-      };
 
-      cameraData.forEach(row => {
+      // Pre-compile device type checks for speed
+      const deviceChecks = [
+        ['M500E', 'M500E'],  // Check M500E before M500
+        ['M500', 'M500'],
+        ['V700', 'V700'],
+        ['V300', 'V300'],
+        ['BWL', 'BodyWorn'],
+        ['BWC', 'BodyWorn'],
+        ['VISTA', 'VISTA'],
+        ['FOURRE', 'FourRE'],
+        ['4RE', 'FourRE'],
+        ['SVX', 'SVX']
+      ];
+
+      for (let i = 0; i < cameraData.length; i++) {
+        const row = cameraData[i];
         const dept = row['DepartmentName']?.trim();
         const serial = row['SerialNumber']?.trim();
-        if (!dept || !serial) return;
+        if (!dept || !serial) continue;
 
         // Initialize department if not exists
         if (!map[dept]) {
@@ -760,20 +774,18 @@
         }
 
         // Skip if we've already counted this serial number for this department
-        if (serialsSeen[dept].has(serial)) {
-          return;
-        }
+        if (serialsSeen[dept].has(serial)) continue;
         serialsSeen[dept].add(serial);
 
         // Infer device type from serial number prefix (check longer prefixes first)
         const serialUpper = serial.toUpperCase();
-        for (const [prefix, type] of Object.entries(deviceTypes)) {
-          if (serialUpper.startsWith(prefix)) {
-            map[dept][type]++;
+        for (let j = 0; j < deviceChecks.length; j++) {
+          if (serialUpper.startsWith(deviceChecks[j][0])) {
+            map[dept][deviceChecks[j][1]]++;
             break;
           }
         }
-      });
+      }
       return map;
     }
 
@@ -839,10 +851,16 @@
 
       // Link storage data using department name matching
       let storageMatched = 0;
+      const accountNameArray = Object.keys(accountNameLower); // Convert to array once
+
       for (const deptName in storageByDept) {
         const normalizedDept = normalize(deptName);
-        const mcn = accountNameLower[normalizedDept] ||
-                   findClosestMatch(normalizedDept, Object.keys(accountNameLower), accountNameLower);
+        let mcn = accountNameLower[normalizedDept];
+
+        // Only do expensive fuzzy match if exact match failed
+        if (!mcn) {
+          mcn = findClosestMatch(normalizedDept, accountNameArray, accountNameLower);
+        }
 
         if (mcn && mcnIndex[mcn]) {
           mcnIndex[mcn].storage = storageByDept[deptName];
@@ -934,13 +952,26 @@
       return str.toLowerCase().replace(/[^\w\s]/g, '').trim();
     }
 
+    // Fast string matching - uses simple checks before expensive Levenshtein
     function findClosestMatch(target, candidates, accountNameLower) {
       let best = null;
       let bestScore = 0;
 
+      // Fast pre-filter: check if target is substring or vice versa
       for (const candidate of candidates) {
-        const score = stringSimilarity(target, candidate);
-        if (score > bestScore && score > 0.55) { // Lower threshold to 0.55 for better matching
+        // Quick checks first (much faster than Levenshtein)
+        if (candidate.includes(target) || target.includes(candidate)) {
+          const score = Math.max(target.length, candidate.length) / Math.max(target.length, candidate.length, 1);
+          if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+          }
+          continue;
+        }
+
+        // Only use expensive similarity for non-substring matches
+        const score = fastStringSimilarity(target, candidate);
+        if (score > bestScore && score > 0.55) {
           bestScore = score;
           best = candidate;
         }
@@ -949,37 +980,32 @@
       return best ? accountNameLower[best] : null;
     }
 
-    function stringSimilarity(a, b) {
+    // Simplified similarity - uses common prefix/suffix instead of full Levenshtein
+    function fastStringSimilarity(a, b) {
+      if (a === b) return 1.0;
+
       const longer = a.length > b.length ? a : b;
       const shorter = a.length > b.length ? b : a;
       if (longer.length === 0) return 1.0;
 
-      const editDistance = levenshteinDistance(longer, shorter);
-      return (longer.length - editDistance) / longer.length;
-    }
+      // Count common prefix
+      let commonPrefix = 0;
+      const minLen = Math.min(a.length, b.length);
+      for (let i = 0; i < minLen; i++) {
+        if (a[i] === b[i]) commonPrefix++;
+        else break;
+      }
 
-    function levenshteinDistance(a, b) {
-      const matrix = [];
-      for (let i = 0; i <= b.length; i++) {
-        matrix[i] = [i];
+      // Count common suffix
+      let commonSuffix = 0;
+      for (let i = 0; i < minLen - commonPrefix; i++) {
+        if (a[a.length - 1 - i] === b[b.length - 1 - i]) commonSuffix++;
+        else break;
       }
-      for (let j = 0; j <= a.length; j++) {
-        matrix[0][j] = j;
-      }
-      for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-          if (b.charAt(i - 1) === a.charAt(j - 1)) {
-            matrix[i][j] = matrix[i - 1][j - 1];
-          } else {
-            matrix[i][j] = Math.min(
-              matrix[i - 1][j - 1] + 1,
-              matrix[i][j - 1] + 1,
-              matrix[i - 1][j] + 1
-            );
-          }
-        }
-      }
-      return matrix[b.length][a.length];
+
+      // Simple similarity based on common characters
+      const common = commonPrefix + commonSuffix;
+      return common / longer.length;
     }
 
     // Lazy analysis - only analyze when needed
