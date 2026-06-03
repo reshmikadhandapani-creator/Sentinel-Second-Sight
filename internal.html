@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel: Evidence Storage & Usage Governance Hub</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0b1118;
+      --bg-elevated: #0d1c2e;
+      --bg-head: #122438;
+      --bg-row: #0e1a28;
+      --bg-row-alt: #101f30;
+      --bg-parent: #153048;
+      --border-subtle: #1e3348;
+      --text-primary: #ffffff;
+      --text-secondary: #b0bac9;
+      --accent-teal: #00a3cc;
+      --accent-teal-hover: #00b8e6;
+      --status-red: #44191c;
+      --status-red-text: #f87171;
+      --status-yellow: #44330d;
+      --status-yellow-text: #fbbf24;
+      --status-green: #0d4429;
+      --status-green-text: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .screen {
+      width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+    }
+
+    .screen-header {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #0f2235, #0b1724);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .screen-header h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .toolbar {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #0c1a29;
+    }
+
+    .search {
+      height: 38px;
+      width: 360px;
+      max-width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: #102235;
+      color: var(--text-primary);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--border-subtle);
+      background: #102235;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0 10px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .icon-btn:hover {
+      background: #143750;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .filter-btn {
+      border: 1px solid var(--border-subtle);
+      background: #102235;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: #143750;
+      color: var(--text-primary);
+    }
+
+    .filter-btn.active {
+      border-color: var(--accent-teal);
+      color: var(--accent-teal);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      font-weight: 700;
+      color: #d8e6f6;
+      background: #12273b;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 14px;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      font-size: 14px;
+      color: var(--text-primary);
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    tbody tr {
+      background: var(--bg-row);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-row-alt);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--bg-row-alt);
+    }
+
+    .expand-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .caret {
+      color: #9dc5df;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
+    .caret.expanded {
+      transform: rotate(90deg);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-red {
+      background: var(--status-red);
+      color: var(--status-red-text);
+      border: 1px solid var(--status-red-text);
+    }
+
+    .status-yellow {
+      background: var(--status-yellow);
+      color: var(--status-yellow-text);
+      border: 1px solid var(--status-yellow-text);
+    }
+
+    .status-green {
+      background: var(--status-green);
+      color: var(--status-green-text);
+      border: 1px solid var(--status-green-text);
+    }
+
+    .capacity-bar {
+      width: 100%;
+      height: 20px;
+      background: #0c1a29;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      margin-top: 4px;
+    }
+
+    .capacity-fill {
+      height: 100%;
+      background: var(--status-green-text);
+      transition: width 0.3s ease, background 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 4px;
+      color: #000;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .capacity-fill.warning {
+      background: var(--status-yellow-text);
+    }
+
+    .capacity-fill.critical {
+      background: var(--status-red-text);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .side-panel-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    .side-panel-overlay.show {
+      display: block;
+    }
+
+    .side-panel-popup {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100vh;
+      background: #153048;
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+      transition: right 0.3s ease;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-panel-popup.open {
+      right: 0;
+    }
+
+    .side-panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #1a3550;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .side-panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    .close-panel-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .close-panel-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .side-panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #122438;
+    }
+
+    .side-panel-tab {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .side-panel-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .side-panel-tab.active {
+      color: var(--accent-teal);
+      border-bottom-color: var(--accent-teal);
+      background: rgba(0, 163, 204, 0.1);
+    }
+
+    .side-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .side-panel-tab-content {
+      display: none;
+    }
+
+    .side-panel-tab-content.active {
+      display: block;
+    }
+
+    .detail-group {
+      margin-bottom: 16px;
+    }
+
+    .detail-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0d1c2e;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .data-table th {
+      background: #12273b;
+      color: #d8e6f6;
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+    }
+
+    .data-table td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(30, 51, 72, 0.8);
+      background: #0e1a28;
+    }
+
+    .data-table tr:nth-child(even) td {
+      background: #101f30;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-subtle);
+      border-top-color: var(--accent-teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      background: var(--status-red);
+      border-left: 4px solid var(--status-red-text);
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      color: var(--status-red-text);
+    }
+
+    .info-message {
+      background: var(--bg-parent);
+      border-left: 4px solid var(--accent-teal);
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .metric-card {
+      background: #1a2f45;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-teal);
+    }
+
+    .contract-row-item {
+      background: #1e3a52;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .contract-expires-soon {
+      color: var(--status-yellow-text);
+      font-weight: 600;
+    }
+
+    .contract-expires-urgent {
+      color: var(--status-red-text);
+      font-weight: 600;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="side-panel-overlay" class="side-panel-overlay" onclick="closeDetailPanel()"></div>
+
+  <main class="screen">
+    <header class="screen-header">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <a href="index.html" style="color: var(--text-secondary); text-decoration: none; font-size: 24px; transition: color 0.2s;" title="Back to Home" onmouseover="this.style.color='var(--accent-teal)'" onmouseout="this.style.color='var(--text-secondary)'">←</a>
+        <h1 style="margin: 0;">Sentinel: Storage & Usage Governance</h1>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <input
+        class="search"
+        id="searchInput"
+        type="search"
+        placeholder="Search agencies..."
+        onkeyup="filterAgencies()"
+      />
+      <button class="icon-btn" onclick="clearSearch()" title="Clear search">✕</button>
+      <div class="filter-group">
+        <button class="filter-btn active" data-filter="all" onclick="filterByHealth(this)">All</button>
+        <button class="filter-btn" data-filter="red" onclick="filterByHealth(this)">🔴 Critical</button>
+        <button class="filter-btn" data-filter="yellow" onclick="filterByHealth(this)">🟡 Warning</button>
+        <button class="filter-btn" data-filter="green" onclick="filterByHealth(this)">🟢 Healthy</button>
+      </div>
+    </section>
+
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div id="content" class="hidden">
+      <section aria-label="Agencies table">
+        <table id="agencies-table">
+          <thead>
+            <tr>
+              <th>Agency</th>
+              <th>Health Status</th>
+              <th>Storage Usage</th>
+              <th>Camera Status</th>
+              <th>Contracts</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody id="agencies-tbody">
+          </tbody>
+        </table>
+      </section>
+      <div id="no-results" class="no-data hidden">No agencies found matching your filters.</div>
+    </div>
+  </main>
+
+  <div id="agency-detail-panel" class="side-panel-popup">
+    <div class="side-panel-header">
+      <h2 id="panel-agency-name">Agency Details</h2>
+      <button class="close-panel-btn" onclick="closeDetailPanel()">✕</button>
+    </div>
+
+    <div class="side-panel-tabs">
+      <button class="side-panel-tab active" onclick="switchDetailTab('storage')">Storage</button>
+      <button class="side-panel-tab" onclick="switchDetailTab('cameras')">Cameras</button>
+      <button class="side-panel-tab" onclick="switchDetailTab('contracts')">Contracts</button>
+    </div>
+
+    <div class="side-panel-content">
+      <div id="detail-storage" class="side-panel-tab-content active">
+        <div class="detail-group">
+          <div class="detail-label">Current Storage Usage</div>
+          <div class="detail-value">
+            <div id="storage-current">0 GB</div>
+            <div class="capacity-bar">
+              <div id="storage-bar" class="capacity-fill" style="width: 0%">0%</div>
+            </div>
+            <div id="storage-limit" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Limit: 0 GB</div>
+          </div>
+        </div>
+
+        <div class="detail-group">
+          <div class="detail-label">Usage by Product</div>
+          <table class="data-table" id="storage-breakdown">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Purchased</th>
+              </tr>
+            </thead>
+            <tbody id="storage-breakdown-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="detail-cameras" class="side-panel-tab-content">
+        <div id="cameras-content">
+          <div class="info-message">Camera usage analysis from VMEL Metrics</div>
+          <table class="data-table" id="camera-table">
+            <thead>
+              <tr>
+                <th>Device Type</th>
+                <th>Authorized</th>
+                <th>Actual</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="camera-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="detail-contracts" class="side-panel-tab-content">
+        <div id="contracts-content">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global data
+    window.data = {
+      mcnData: {},
+      contracts: [],
+      storage: {},
+      devices: {},
+      analysis: {}
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await loadData();
+        await analyzeAll();
+        renderDashboard();
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (error) {
+        console.error('Initialization error:', error);
+        showError('Failed to load data: ' + error.message);
+      }
+    });
+
+    // Load CSV files
+    async function loadData() {
+      try {
+        // Load Contracts
+        const contractsResp = await fetch('./data/Contracts Linked to CCadmin Status_data (5).csv');
+        const contractsText = await contractsResp.text();
+        const contractsParsed = Papa.parse(contractsText, { header: true, skipEmptyLines: true });
+        window.data.contracts = contractsParsed.data;
+
+        // Load VMEL Metrics
+        const vmelResp = await fetch('./data/Copy of VMEL Metrics - Metrics.csv');
+        const vmelText = await vmelResp.text();
+        const vmelParsed = Papa.parse(vmelText, { header: true, skipEmptyLines: true });
+        const vmelByMCN = buildVMELByMCN(vmelParsed.data);
+
+        // Load VMEL Storage (new)
+        const storageResp = await fetch('./data/Copy of VMEL Metrics - Storage.csv');
+        const storageText = await storageResp.text();
+        const storageParsed = Papa.parse(storageText, { header: true, skipEmptyLines: true });
+        const storageByDept = buildStorageByDept(storageParsed.data);
+
+        // Load VMEL ActiveCameras (new)
+        const activeCamResp = await fetch('./data/Copy of VMEL Metrics - ActiveCameras.csv');
+        const activeCamText = await activeCamResp.text();
+        const activeCamParsed = Papa.parse(activeCamText, { header: true, skipEmptyLines: true });
+        const camerasByDept = buildCamerasByDept(activeCamParsed.data);
+
+        // Load old Storage file as fallback
+        const oldStorageResp = await fetch('./data/Copy of Storage Per Agency (USGov) - April 2026 - prod-agency-storage-size-202605.csv');
+        const oldStorageText = await oldStorageResp.text();
+        const oldStorageParsed = Papa.parse(oldStorageText, { header: true, skipEmptyLines: true });
+
+        // Build MCN-based index with all linked data
+        window.data.mcnData = buildMCNIndex(window.data.contracts, vmelByMCN, storageByDept, camerasByDept, oldStorageParsed.data);
+      } catch (error) {
+        throw new Error('CSV loading failed: ' + error.message);
+      }
+    }
+
+    function buildStorageByDept(storageData) {
+      const map = {};
+      let rowsProcessed = 0;
+      let rowsWithStorage = 0;
+
+      storageData.forEach(row => {
+        rowsProcessed++;
+        const dept = row['DepartmentName']?.trim();
+        if (!dept || dept === '#N/A' || dept === '') return;
+
+        // Use most recent billing period per department
+        if (!map[dept] || new Date(row['BillingPeriodEndDate']) > new Date(map[dept].date)) {
+          // Storage columns are in MiB (Mebibytes)
+          const archive = parseFloat(row['Archive LRS Data Stored']) || 0;
+          const cold = parseFloat(row['Cold LRS Data Stored']) || 0;
+          const cool = parseFloat(row['Cool LRS Data Stored']) || 0;
+          const hot = parseFloat(row['Hot LRS Data Stored']) || 0;
+          const totalMiB = archive + cold + cool + hot;
+
+          // Only store if there's actual storage data
+          if (totalMiB > 0) {
+            // Convert MiB → GiB → GB
+            const totalGiB = totalMiB / 1024;
+            const totalGB = totalGiB * 1.073741824;
+
+            map[dept] = {
+              date: row['BillingPeriodEndDate'],
+              gb: totalGB
+            };
+            rowsWithStorage++;
+          }
+        }
+      });
+
+      console.log(`Storage CSV: processed ${rowsProcessed} rows, found ${rowsWithStorage} departments with storage, mapped ${Object.keys(map).length} unique departments`);
+      return map;
+    }
+
+    function buildCamerasByDept(cameraData) {
+      const map = {};
+      const serialsSeen = {}; // Track unique serials per department to avoid double counting
+      const deviceTypes = {
+        'M500E': 'M500E', // Check M500E before M500 to avoid matching M500E as M500
+        'M500': 'M500',
+        'V700': 'V700',
+        'V300': 'V300',
+        'BWL': 'BodyWorn',
+        'BWC': 'BodyWorn', // BWC prefix for body-worn cameras
+        'VISTA': 'VISTA',
+        'FOURRE': 'FourRE',
+        '4RE': 'FourRE',
+        'SVX': 'SVX'
+      };
+
+      cameraData.forEach(row => {
+        const dept = row['DepartmentName']?.trim();
+        const serial = row['SerialNumber']?.trim();
+        if (!dept || !serial) return;
+
+        // Initialize department if not exists
+        if (!map[dept]) {
+          map[dept] = {
+            FourRE: 0, VISTA: 0, V300: 0, M500: 0, M500E: 0, V700: 0, SVX: 0, BodyWorn: 0
+          };
+          serialsSeen[dept] = new Set();
+        }
+
+        // Skip if we've already counted this serial number for this department
+        if (serialsSeen[dept].has(serial)) {
+          return;
+        }
+        serialsSeen[dept].add(serial);
+
+        // Infer device type from serial number prefix (check longer prefixes first)
+        const serialUpper = serial.toUpperCase();
+        for (const [prefix, type] of Object.entries(deviceTypes)) {
+          if (serialUpper.startsWith(prefix)) {
+            map[dept][type]++;
+            break;
+          }
+        }
+      });
+      return map;
+    }
+
+    function buildVMELByMCN(vmelData) {
+      const map = {};
+      vmelData.forEach(row => {
+        const mcn = row.MCN?.trim();
+        const agency = row.Agency?.trim();
+        const state = row['State/Province']?.trim() || '';
+        if (mcn && agency) {
+          map[mcn] = {
+            agency,
+            state,
+            FourRE: parseInt(row.FourRE) || 0,
+            VISTA: parseInt(row.VISTA) || 0,
+            V300: parseInt(row.V300) || 0,
+            M500: parseInt(row.M500) || 0,
+            M500E: parseInt(row.M500E) || 0,
+            V700: parseInt(row.V700) || 0,
+            SVX: parseInt(row.SVX) || 0,
+            TotalUsers: parseInt(row.TotalUsers) || 0
+          };
+        }
+      });
+      return map;
+    }
+
+    function buildMCNIndex(contracts, vmelByMCN, storageByDept, camerasByDept, oldStorageData) {
+      const mcnIndex = {};
+
+      // Index contracts by MCN
+      contracts.forEach(row => {
+        const mcn = row['Cust Number']?.trim();
+        const accountName = row['Account Name']?.trim();
+        const ccadminIds = row['CCAdmin Customer ID(s)']?.trim() || '';
+
+        if (mcn) {
+          if (!mcnIndex[mcn]) {
+            const vmelData = vmelByMCN[mcn];
+            mcnIndex[mcn] = {
+              mcn,
+              accountName,
+              ccadminIds: ccadminIds.split(',').map(id => id.trim()),
+              contracts: [],
+              devices: vmelData || null,
+              state: vmelData?.state || '',
+              storage: null,
+              activeCameras: null
+            };
+          }
+          mcnIndex[mcn].contracts.push(row);
+        }
+      });
+
+      // Create normalized lookup for department name matching
+      const accountNameLower = {};
+      const mcnByAccountName = {}; // Track MCN by exact account name for fallback
+      for (const mcn in mcnIndex) {
+        const normalized = normalize(mcnIndex[mcn].accountName);
+        accountNameLower[normalized] = mcn;
+        mcnByAccountName[mcnIndex[mcn].accountName] = mcn;
+      }
+
+      // Link storage data using department name matching
+      let storageMatched = 0;
+      for (const deptName in storageByDept) {
+        const normalizedDept = normalize(deptName);
+        const mcn = accountNameLower[normalizedDept] ||
+                   findClosestMatch(normalizedDept, Object.keys(accountNameLower), accountNameLower);
+
+        if (mcn && mcnIndex[mcn]) {
+          mcnIndex[mcn].storage = storageByDept[deptName];
+          storageMatched++;
+        }
+      }
+      console.log(`Storage matching: ${storageMatched}/${Object.keys(storageByDept).length} departments matched to MCNs`);
+
+      // Link active cameras using department name matching
+      let camerasMatched = 0;
+      for (const deptName in camerasByDept) {
+        const normalizedDept = normalize(deptName);
+        const mcn = accountNameLower[normalizedDept] ||
+                   findClosestMatch(normalizedDept, Object.keys(accountNameLower), accountNameLower);
+
+        if (mcn && mcnIndex[mcn]) {
+          mcnIndex[mcn].activeCameras = camerasByDept[deptName];
+          camerasMatched++;
+        }
+      }
+      console.log(`Camera matching: ${camerasMatched}/${Object.keys(camerasByDept).length} departments matched to MCNs`);
+
+      // Fallback: Link old storage using CCAdmin IDs
+      oldStorageData.forEach(storageRow => {
+        const tenantId = storageRow.Agency?.trim();
+        if (!tenantId) return;
+
+        for (const mcn in mcnIndex) {
+          if (mcnIndex[mcn].storage) continue;
+          const ccadminIds = mcnIndex[mcn].ccadminIds;
+          if (ccadminIds.some(id => id.includes(tenantId) || tenantId.includes(id))) {
+            const bytes = parseFloat(storageRow['Total Agency Size (Bytes)']) || 0;
+            const gib = bytes / (1024 ** 3);
+            mcnIndex[mcn].storage = {
+              gb: gib * 1.024
+            };
+            break;
+          }
+        }
+      });
+
+      // Filter to only MCNs with complete data mapping
+      const filteredIndex = {};
+      for (const mcn in mcnIndex) {
+        if (mcnIndex[mcn].contracts.length > 0 && (mcnIndex[mcn].devices || mcnIndex[mcn].storage || mcnIndex[mcn].activeCameras)) {
+          filteredIndex[mcn] = mcnIndex[mcn];
+        }
+      }
+
+      console.log(`MCN Index: ${Object.keys(mcnIndex).length} total MCNs, ${Object.keys(filteredIndex).length} with data for display`);
+
+      // Log Texas DPS specifically with matched department name
+      const texasMCN = '1000031196';
+      if (filteredIndex[texasMCN]) {
+        const texas = filteredIndex[texasMCN];
+
+        // Find which storage department was matched
+        let matchedStorageDept = null;
+        if (texas.storage) {
+          const texasNormalized = normalize(texas.accountName);
+          for (const deptName in storageByDept) {
+            const normalizedDept = normalize(deptName);
+            const mcn = accountNameLower[normalizedDept] ||
+                       findClosestMatch(normalizedDept, Object.keys(accountNameLower), accountNameLower);
+            if (mcn === texasMCN) {
+              matchedStorageDept = deptName;
+              break;
+            }
+          }
+        }
+
+        console.log(`Texas DPS (${texasMCN}):`, {
+          accountName: texas.accountName,
+          hasStorage: !!texas.storage,
+          storageGB: texas.storage?.gb?.toFixed(2),
+          storageDate: texas.storage?.date,
+          matchedStorageDept: matchedStorageDept,
+          hasDevices: !!texas.devices,
+          hasActiveCameras: !!texas.activeCameras,
+          contracts: texas.contracts.length
+        });
+      }
+
+      return filteredIndex;
+    }
+
+    function normalize(str) {
+      if (!str) return '';
+      return str.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    }
+
+    function findClosestMatch(target, candidates, accountNameLower) {
+      let best = null;
+      let bestScore = 0;
+
+      for (const candidate of candidates) {
+        const score = stringSimilarity(target, candidate);
+        if (score > bestScore && score > 0.55) { // Lower threshold to 0.55 for better matching
+          bestScore = score;
+          best = candidate;
+        }
+      }
+
+      return best ? accountNameLower[best] : null;
+    }
+
+    function stringSimilarity(a, b) {
+      const longer = a.length > b.length ? a : b;
+      const shorter = a.length > b.length ? b : a;
+      if (longer.length === 0) return 1.0;
+
+      const editDistance = levenshteinDistance(longer, shorter);
+      return (longer.length - editDistance) / longer.length;
+    }
+
+    function levenshteinDistance(a, b) {
+      const matrix = [];
+      for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+      }
+      for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+      }
+      for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+
+    // Analysis functions
+    async function analyzeAll() {
+      window.data.analysis = {};
+      for (const mcn in window.data.mcnData) {
+        const mcnRecord = window.data.mcnData[mcn];
+        window.data.analysis[mcn] = analyzeAgency(mcn, mcnRecord);
+      }
+    }
+
+    function analyzeAgency(mcn, mcnRecord) {
+      const devices = mcnRecord.activeCameras || mcnRecord.devices || {};
+      const storage = mcnRecord.storage || {};
+      const contracts = mcnRecord.contracts;
+
+      return {
+        mcn,
+        accountName: mcnRecord.accountName,
+        storageAnalysis: analyzeFixedStorageCapacity(contracts, storage),
+        cameraAnalysis: analyzeUnlimitedCameraStorage(contracts, devices),
+        contractAnalysis: analyzeContractExpiration(contracts),
+        health: null
+      };
+    }
+
+    function analyzeFixedStorageCapacity(contracts, storage) {
+      // Part Numbers for Fixed Storage
+      const FIXED_STORAGE_PART_NUMBERS = {
+        // Storage measured in GB
+        GB_STORAGE: [
+          'SSV00S02783A', // COMMANDCENTRAL CLOUD STORAGE GB
+          'SSV00S02840A', // COMMANDCENTRAL STORAGE GB
+          'SSV00S02870A'  // SOFTWARE, INCLUDED COMMANDCENTRAL STORAGE GB
+        ],
+        // Storage measured in TB
+        TB_STORAGE: [
+          'SSV00S05159A', // COMMANDCENTRAL DEMS FIXED STORAGE PER TB
+          'WGC01003',     // ADDITIONAL DATA STORAGE
+          'WGC01009'      // VIDEOMANAGER EL CLOUD STORAGE
+        ]
+      };
+
+      let totalPurchasedGB = 0;
+      let productBreakdown = {};
+
+      // Track unique contracts to avoid double-counting
+      const countedContracts = new Set();
+
+      contracts.forEach(c => {
+        const partNumber = (c['Part Number'] || '').trim();
+        const contractNumber = (c['contract_number'] || '').trim();
+        const desc = c['Item Description'] || 'Unknown Product';
+        const qty = parseFloat(c['v_sales_order_line_f.ordered_quantity']) || 0;
+        const statusCode = (c['Contract Status (Header)'] || '').toUpperCase();
+        const lineStatus = (c['Line Status'] || '').toUpperCase();
+
+        if (qty === 0 || !partNumber) return;
+
+        // Only count ACTIVE line items (check Line Status only)
+        if (!lineStatus.includes('ACTIVE')) {
+          return;
+        }
+
+        // De-duplicate: only count each unique contract+part combo once
+        const contractKey = `${contractNumber}|${partNumber}`;
+        if (countedContracts.has(contractKey)) {
+          return;
+        }
+        countedContracts.add(contractKey);
+
+        let gbAmount = 0;
+
+        // GB-based storage products
+        if (FIXED_STORAGE_PART_NUMBERS.GB_STORAGE.includes(partNumber)) {
+          gbAmount = qty; // Already in GB
+        }
+        // TB-based storage products
+        else if (FIXED_STORAGE_PART_NUMBERS.TB_STORAGE.includes(partNumber)) {
+          gbAmount = qty * 1000; // Convert TB to GB
+        }
+
+        if (gbAmount > 0) {
+          totalPurchasedGB += gbAmount;
+          if (!productBreakdown[desc]) {
+            productBreakdown[desc] = 0;
+          }
+          productBreakdown[desc] += gbAmount;
+        }
+      });
+
+      const currentGB = storage.gb || 0;
+      const percentage = totalPurchasedGB > 0 ? (currentGB / totalPurchasedGB) * 100 : 0;
+
+      let status = 'green';
+      if (percentage >= 80 && percentage < 95) status = 'yellow';
+      if (percentage >= 95) status = 'red';
+
+      return {
+        currentGB: Math.round(currentGB * 100) / 100,
+        purchasedGB: Math.round(totalPurchasedGB),
+        provisionedGB: 0,
+        percentUsed: Math.round(percentage * 10) / 10,
+        status,
+        flag: percentage >= 80 ? `${Math.round(percentage)}% capacity used` : null,
+        productBreakdown
+      };
+    }
+
+    function analyzeUnlimitedCameraStorage(contracts, devices) {
+      // Part Number definitions - based on actual data in CSV
+      const PART_NUMBERS = {
+        // Software/Service Tiers (EXCLUDE - not camera authorizations)
+        SOFTWARE_LICENSES: [
+          'SSV00S02600A', 'SSV00S02601A', 'SSV00S02859A', // Evidence Standard/Plus
+          'SSV00S03094A', 'SSV00S03161A', // Evidence Plus Subscription VAAS / Additional User
+          'SSV00S04277A', // Evidence Starter
+          'SSV00S05155A', 'SSV00S05156A', 'SSV00S05157A', 'SSV00S05158A', 'SSV00S05534A', // DEMS Service Tiers
+          'SSV00S01603A', // Digital Evidence Management Plus
+          'SSV00S00331A', // CC Vault Judicial
+          'AAS00100-100' // User License
+        ],
+
+        // Body-Worn Camera Unlimited Storage
+        BODY_WORN: [
+          'SSV00S03095A', // COMMANDCENTRAL EVIDENCE UNLIMITED BODY WORN CAMERA STORAGE VAAS
+          'SSV00S02784A', // UNLIMITED BODY WORN CAMERA STORAGE
+          'SSV00S05160A', // COMMANDCENTRAL DEMS UNLIMITED STORAGE PER BODYWORN CAMERA
+          'AAS00100-120', // COMMAND CENTRAL EVIDENCE BWC AS A SERVICE
+          'WGC02001' // VIDEOMANAGER EL CLOUD (Body-Worn variant)
+        ],
+
+        // In-Car Video Unlimited Storage
+        IN_CAR: [
+          'SSV00S03096A', // COMMANDCENTRAL EVIDENCE UNLIMITED IN CAR STORAGE VAAS
+          'SSV00S02785A', // COMMANDCENTRAL UNLIMITED CAR STORAGE
+          'SSV00S05161A', // COMMANDCENTRAL DEMS UNLIMITED STORAGE PER IN-CAR VIDEO CAMERA
+          'AAS00100-110', // COMMAND CENTRAL EVIDENCE ICV AS A SERVICE
+          'WGC02002', 'WGC02003', 'WGC02004', 'WGC02005' // VIDEOMANAGER EL CLOUD (In-Car variants)
+        ],
+
+        // Fixed Storage (GB or TB)
+        FIXED_STORAGE: [
+          'SSV00S02783A', // COMMANDCENTRAL CLOUD STORAGE GB
+          'SSV00S02840A', // COMMANDCENTRAL STORAGE GB
+          'SSV00S02870A', // SOFTWARE, INCLUDED COMMANDCENTRAL STORAGE GB
+          'SSV00S01614A', // CC VAULT BLOCK OF STORAGE
+          'SSV00S05159A', // COMMANDCENTRAL DEMS FIXED STORAGE PER TB
+          'WGC01003', // ADDITIONAL DATA STORAGE
+          'WGC01009' // VIDEOMANAGER EL CLOUD STORAGE
+        ],
+
+        // Generic VideoManager devices (not unlimited storage)
+        VIDEOMANAGER_DEVICES: [
+          'WGC01001', 'WGC01002', 'WGC01004', 'WGC01005', 'WGC01007' // Per-device licensing
+        ]
+      };
+
+      let authorizedCameras = {
+        BodyWorn: 0,
+        InCar: 0
+      };
+
+      let hasUnlimitedStorage = false;
+
+      // Track unique contracts to avoid double-counting (contract_number + part_number)
+      const countedContracts = new Set();
+
+      // Sum authorized cameras using ONLY Part Number lookups from ACTIVE contracts
+      contracts.forEach(c => {
+        const partNumber = (c['Part Number'] || '').trim();
+        const contractNumber = (c['contract_number'] || '').trim();
+        const qty = parseInt(c['v_sales_order_line_f.ordered_quantity']) || 0;
+        const statusCode = (c['Contract Status (Header)'] || '').toUpperCase();
+        const lineStatus = (c['Line Status'] || '').toUpperCase();
+
+        if (qty === 0 || !partNumber) return;
+
+        // Only count ACTIVE line items (check Line Status only)
+        if (!lineStatus.includes('ACTIVE')) {
+          return;
+        }
+
+        // De-duplicate: only count each unique contract+part combo once
+        const contractKey = `${contractNumber}|${partNumber}`;
+        if (countedContracts.has(contractKey)) {
+          return;
+        }
+        countedContracts.add(contractKey);
+
+        // Skip software licenses
+        if (PART_NUMBERS.SOFTWARE_LICENSES.includes(partNumber)) {
+          return;
+        }
+
+        // Body-Worn Camera licenses
+        if (PART_NUMBERS.BODY_WORN.includes(partNumber)) {
+          authorizedCameras.BodyWorn += qty;
+          hasUnlimitedStorage = true;
+        }
+
+        // In-Car Video licenses
+        if (PART_NUMBERS.IN_CAR.includes(partNumber)) {
+          const desc = (c['Item Description'] || '').toUpperCase();
+          let cameraMultiplier = 1;
+
+          // WGC02002/04/05: Check for "WITH X CAMERAS" pattern - these are systems
+          const cameraMatch = desc.match(/WITH (\d+) CAMERA/);
+          if (cameraMatch) {
+            cameraMultiplier = parseInt(cameraMatch[1]);
+          }
+          // WGC02003: "PER ADDITIONAL CAMERA" - this is per individual camera, no multiplier
+          // SSV00S05161A/SSV00S03096A/SSV00S02785A/AAS00100-110: "PER IN-CAR VIDEO" - per camera/system
+
+          authorizedCameras.InCar += qty * cameraMultiplier;
+          hasUnlimitedStorage = true;
+        }
+
+        // VideoManager per-device products (unlimited storage per device)
+        if (PART_NUMBERS.VIDEOMANAGER_DEVICES.includes(partNumber)) {
+          const desc = (c['Item Description'] || '').toUpperCase();
+          // Check description to determine device type
+          if (desc.includes('BODY') || desc.includes('BWC')) {
+            authorizedCameras.BodyWorn += qty;
+          } else if (desc.includes('IN-CAR') || desc.includes('IN CAR') || desc.includes('ICV')) {
+            authorizedCameras.InCar += qty;
+          } else {
+            // For ambiguous WGC01001 "UNLIMITED ASSIGNED" products,
+            // split proportionally based on actual device deployment
+            // This will be calculated after we know actual device counts
+            // Store in a temporary bucket for now
+            if (!authorizedCameras._ambiguous) authorizedCameras._ambiguous = 0;
+            authorizedCameras._ambiguous += qty;
+          }
+          hasUnlimitedStorage = true;
+        }
+      });
+
+      // Calculate actual cameras by category
+      const actualBodyWorn = (devices.VISTA || 0) + (devices.V300 || 0) + (devices.V700 || 0) + (devices.BodyWorn || 0);
+      const actualInCar = (devices.M500 || 0) + (devices.M500E || 0) + (devices.SVX || 0) + (devices.FourRE || 0);
+
+      const actualCameras = {
+        BodyWorn: actualBodyWorn,
+        InCar: actualInCar
+      };
+
+      // Handle ambiguous WGC01001 licenses by distributing proportionally
+      if (authorizedCameras._ambiguous && (actualBodyWorn > 0 || actualInCar > 0)) {
+        const totalActual = actualBodyWorn + actualInCar;
+        const bodyWornRatio = actualBodyWorn / totalActual;
+        const inCarRatio = actualInCar / totalActual;
+
+        authorizedCameras.BodyWorn += Math.round(authorizedCameras._ambiguous * bodyWornRatio);
+        authorizedCameras.InCar += Math.round(authorizedCameras._ambiguous * inCarRatio);
+        delete authorizedCameras._ambiguous;
+      } else if (authorizedCameras._ambiguous) {
+        // If no actual devices, assume all in-car (legacy behavior)
+        authorizedCameras.InCar += authorizedCameras._ambiguous;
+        delete authorizedCameras._ambiguous;
+      }
+
+      let overages = [];
+
+      // Only flag overages if they have authorized cameras (don't flag 0 vs 0)
+      if (actualBodyWorn > authorizedCameras.BodyWorn && authorizedCameras.BodyWorn > 0) {
+        overages.push({
+          type: 'Body-Worn Cameras',
+          actual: actualBodyWorn,
+          authorized: authorizedCameras.BodyWorn,
+          overage: actualBodyWorn - authorizedCameras.BodyWorn
+        });
+      }
+
+      if (actualInCar > authorizedCameras.InCar && authorizedCameras.InCar > 0) {
+        overages.push({
+          type: 'In-Car Systems',
+          actual: actualInCar,
+          authorized: authorizedCameras.InCar,
+          overage: actualInCar - authorizedCameras.InCar
+        });
+      }
+
+      const status = overages.length > 0 ? 'red' : 'green';
+      return {
+        actualCameras,
+        authorizedCameras,
+        overages,
+        status,
+        hasUnlimitedStorage,
+        flag: overages.length > 0 ? `${overages.length} camera category exceeds authorization` : null
+      };
+    }
+
+    function analyzeContractExpiration(contracts) {
+      const today = new Date();
+      let active = [];
+      let expiring = [];
+      let expired = [];
+
+      // Track unique contracts to avoid duplicates in display
+      const seen = new Set();
+
+      contracts.forEach(c => {
+        const endDateStr = c['line_contract_end_date'] || c['Header End Date'] || '';
+        const lineStatusCode = (c['Line Status'] || '').toUpperCase();
+        const partNumber = c['Part Number'] || '';
+        const contractNumber = c['contract_number'] || '';
+        const description = c['Item Description'] || 'Unknown';
+
+        // Skip if no line status (legacy contracts we're ignoring)
+        if (!lineStatusCode) return;
+
+        // De-duplicate by contract number + part number (or order number if no contract number)
+        const orderNumber = c['Order Number'] || '';
+        const key = `${contractNumber || orderNumber}|${partNumber}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const isActive = lineStatusCode.includes('ACTIVE');
+        const isExpired = lineStatusCode.includes('EXPIRED') || lineStatusCode.includes('TERMINATED') || lineStatusCode.includes('CLOSED');
+
+        const contractInfo = {
+          partNumber,
+          contract: description,
+          endDate: endDateStr || 'No end date',
+          daysUntil: endDateStr ? Math.floor((new Date(endDateStr) - today) / (1000 * 60 * 60 * 24)) : 999999,
+          lineStatusCode
+        };
+
+        // Categorize contracts
+        if (isExpired) {
+          expired.push(contractInfo);
+        } else if (isActive) {
+          if (endDateStr && contractInfo.daysUntil < 90) {
+            expiring.push(contractInfo);
+          } else {
+            active.push(contractInfo);
+          }
+        }
+      });
+
+      const worstStatus = expiring.length === 0 && expired.length === 0 ? 'green' :
+                          expiring.some(i => i.daysUntil < 30) || expired.length > 0 ? 'red' : 'yellow';
+
+      return {
+        activeContracts: active,
+        expiringContracts: expiring,
+        expiredContracts: expired,
+        status: worstStatus,
+        flag: expiring.length > 0 ? `${expiring.length} contract(s) expiring soon` :
+              expired.length > 0 ? `${expired.length} expired contract(s)` : null
+      };
+    }
+
+    function getAgencyContracts(agencyName) {
+      return window.data.contracts.filter(c =>
+        c['Account Name'] && c['Account Name'].toLowerCase().includes(agencyName.toLowerCase())
+      );
+    }
+
+    function calculateHealth(mcn) {
+      const analysis = window.data.analysis[mcn];
+      if (!analysis) return 'green';
+
+      const statuses = [
+        analysis.storageAnalysis.status,
+        analysis.cameraAnalysis.status,
+        analysis.contractAnalysis.status
+      ];
+
+      if (statuses.includes('red')) return 'red';
+      if (statuses.includes('yellow')) return 'yellow';
+      return 'green';
+    }
+
+    // Rendering
+    function renderDashboard() {
+      const tbody = document.getElementById('agencies-tbody');
+      tbody.innerHTML = '';
+
+      for (const mcn in window.data.analysis) {
+        const analysis = window.data.analysis[mcn];
+        const health = calculateHealth(mcn);
+        const mcnRecord = window.data.mcnData[mcn];
+
+        const row = document.createElement('tr');
+        row.dataset.mcn = mcn;
+        row.onclick = () => openDetailPanel(mcn);
+
+        const storageFlag = analysis.storageAnalysis.flag;
+        const cameraFlag = analysis.cameraAnalysis.flag;
+        const contractFlag = analysis.contractAnalysis.flag;
+
+        row.innerHTML = `
+          <td>
+            <div class="expand-cell">
+              <span class="caret">▶</span>
+              <span>${analysis.accountName}</span>
+            </div>
+          </td>
+          <td>
+            <span class="status-badge status-${health}">● ${health.toUpperCase()}</span>
+          </td>
+          <td>
+            ${analysis.storageAnalysis.purchasedGB > 0
+              ? `${analysis.storageAnalysis.percentUsed}% (${Math.round(analysis.storageAnalysis.currentGB).toLocaleString()}/${analysis.storageAnalysis.purchasedGB.toLocaleString()} GB)`
+              : analysis.cameraAnalysis.hasUnlimitedStorage
+                ? `<span style="color: var(--accent-teal);">${Math.round(analysis.storageAnalysis.currentGB).toLocaleString()} GB (Unlimited)</span>`
+                : '<span style="color: var(--text-secondary);">No data</span>'
+            }
+            ${storageFlag ? `<div style="font-size: 11px; color: var(--status-yellow-text);">⚠ ${storageFlag}</div>` : ''}
+          </td>
+          <td>
+            ${analysis.cameraAnalysis.overages.length > 0
+              ? `<span class="status-badge status-red">⚠ Overage</span>`
+              : '<span class="status-badge status-green">✓ OK</span>'
+            }
+            ${cameraFlag ? `<div style="font-size: 11px; color: var(--status-red-text);">${cameraFlag}</div>` : ''}
+          </td>
+          <td>
+            ${contractFlag
+              ? `<span class="status-badge status-yellow">${contractFlag}</span>`
+              : '<span class="status-badge status-green">✓ OK</span>'
+            }
+          </td>
+          <td>${mcnRecord.state || 'N/A'}</td>
+        `;
+
+        tbody.appendChild(row);
+      }
+
+      updateNoResults();
+    }
+
+    function openDetailPanel(mcn) {
+      const analysis = window.data.analysis[mcn];
+      const mcnRecord = window.data.mcnData[mcn];
+      const contracts = mcnRecord.contracts;
+
+      document.getElementById('panel-agency-name').textContent = analysis.accountName;
+
+      // Storage tab
+      const storageAnalysis = analysis.storageAnalysis;
+      const hasUnlimitedStorage = analysis.cameraAnalysis.hasUnlimitedStorage;
+      const hasFixedStorage = storageAnalysis.purchasedGB > 0;
+
+      document.getElementById('storage-current').textContent = `${Math.round(storageAnalysis.currentGB * 10) / 10} GB`;
+
+      if (hasFixedStorage) {
+        // Show capacity bar for fixed storage
+        document.getElementById('storage-limit').textContent = `Limit: ${storageAnalysis.purchasedGB.toLocaleString()} GB`;
+        const barPercent = Math.min(100, storageAnalysis.percentUsed);
+        const barElement = document.getElementById('storage-bar');
+        barElement.style.width = barPercent + '%';
+        barElement.textContent = Math.round(barPercent) + '%';
+        barElement.classList.remove('warning', 'critical');
+        if (barPercent >= 80 && barPercent < 95) barElement.classList.add('warning');
+        if (barPercent >= 95) barElement.classList.add('critical');
+        document.querySelector('.capacity-bar').style.display = 'block';
+      } else if (hasUnlimitedStorage) {
+        // Unlimited storage - no capacity bar needed
+        document.getElementById('storage-limit').innerHTML = `<span style="color: var(--accent-teal); font-style: italic;">Unlimited storage via camera licenses</span>`;
+        const barElement = document.getElementById('storage-bar');
+        barElement.style.width = '0%';
+        barElement.textContent = '';
+        barElement.classList.remove('warning', 'critical');
+        document.querySelector('.capacity-bar').style.display = 'none';
+      } else {
+        // No active contracts found - hide capacity bar and show warning
+        document.getElementById('storage-limit').innerHTML = `<span style="color: var(--status-yellow-text); font-style: italic;">⚠ No active storage contracts found</span>`;
+        const barElement = document.getElementById('storage-bar');
+        barElement.style.width = '0%';
+        barElement.textContent = '';
+        barElement.classList.remove('warning', 'critical');
+        document.querySelector('.capacity-bar').style.display = 'none';
+      }
+
+      // Storage breakdown
+      const storageBreakdown = tbody => {
+        tbody.innerHTML = '';
+        const breakdown = analysis.storageAnalysis.productBreakdown || {};
+        const hasUnlimitedStorage = analysis.cameraAnalysis.hasUnlimitedStorage;
+
+        if (Object.keys(breakdown).length === 0) {
+          const row = document.createElement('tr');
+          if (hasUnlimitedStorage) {
+            row.innerHTML = `<td colspan="2" style="color: var(--accent-teal); font-style: italic;">Storage covered by unlimited camera licenses</td>`;
+          } else {
+            row.innerHTML = `<td colspan="2" style="color: var(--text-secondary);">No active fixed storage contracts</td>`;
+          }
+          tbody.appendChild(row);
+          return;
+        }
+        Object.keys(breakdown).forEach(desc => {
+          const row = document.createElement('tr');
+          const gb = Math.round(breakdown[desc]);
+          row.innerHTML = `<td>${desc}</td><td>${gb.toLocaleString()} GB</td>`;
+          tbody.appendChild(row);
+        });
+      };
+      storageBreakdown(document.getElementById('storage-breakdown-body'));
+
+      // Cameras tab
+      const cameras = mcnRecord.activeCameras || mcnRecord.devices || {};
+      const cameraAnalysis = analysis.cameraAnalysis;
+      const cameraTbody = document.getElementById('camera-table-body');
+      cameraTbody.innerHTML = '';
+
+      // Show aggregated categories
+      [
+        { label: 'Body-Worn Cameras', auth: cameraAnalysis.authorizedCameras.BodyWorn, actual: cameraAnalysis.actualCameras.BodyWorn },
+        { label: 'In-Car Systems', auth: cameraAnalysis.authorizedCameras.InCar, actual: cameraAnalysis.actualCameras.InCar }
+      ].forEach(cat => {
+        const row = document.createElement('tr');
+        let status = '✓ OK';
+        let statusColor = 'var(--status-green-text)';
+        if (cat.actual > cat.auth && cat.auth > 0) {
+          status = '⚠ Overage';
+          statusColor = 'var(--status-red-text)';
+        } else if (cat.actual === 0 && cat.auth === 0) {
+          status = '-';
+          statusColor = 'var(--text-secondary)';
+        }
+        row.innerHTML = `
+          <td><strong>${cat.label}</strong></td>
+          <td>${cat.auth.toLocaleString()}</td>
+          <td>${cat.actual.toLocaleString()}</td>
+          <td style="color: ${statusColor};">${status}</td>
+        `;
+        cameraTbody.appendChild(row);
+      });
+
+      // Show device breakdown if we have detailed device data
+      const hasDeviceData = Object.keys(cameras).length > 0 &&
+                           Object.values(cameras).some(count => count > 0);
+
+      const totalActual = cameraAnalysis.actualCameras.BodyWorn + cameraAnalysis.actualCameras.InCar;
+      const totalAuth = cameraAnalysis.authorizedCameras.BodyWorn + cameraAnalysis.authorizedCameras.InCar;
+
+      if (hasDeviceData) {
+        const breakdownHeader = document.createElement('tr');
+        breakdownHeader.innerHTML = `<td colspan="4" style="padding-top: 16px; color: var(--text-secondary); font-size: 12px; font-weight: 600;">DEVICE BREAKDOWN</td>`;
+        cameraTbody.appendChild(breakdownHeader);
+
+        ['FourRE', 'VISTA', 'V300', 'M500', 'M500E', 'V700', 'SVX', 'BodyWorn'].forEach(type => {
+          const actual = cameras[type] || 0;
+          if (actual > 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td style="padding-left: 20px; font-size: 13px;">${type}</td>
+              <td>-</td>
+              <td>${actual.toLocaleString()}</td>
+              <td>-</td>
+            `;
+            cameraTbody.appendChild(row);
+          }
+        });
+      } else if (totalActual > 0 || totalAuth > 0) {
+        // Show note if we have camera counts but no device breakdown
+        const noteRow = document.createElement('tr');
+        noteRow.innerHTML = `<td colspan="4" style="padding-top: 12px; color: var(--text-secondary); font-size: 12px; font-style: italic;">Device-level breakdown not available for this agency</td>`;
+        cameraTbody.appendChild(noteRow);
+      }
+
+      // Contracts tab
+      const contractsContent = document.getElementById('contracts-content');
+      contractsContent.innerHTML = '';
+
+      const contractAnalysis = analysis.contractAnalysis;
+
+      // Check if expired camera/storage contracts could explain overages
+      const hasOverage = cameraAnalysis.overages.length > 0 || storageAnalysis.status === 'red' || storageAnalysis.status === 'yellow';
+      const expiredCameraContracts = contractAnalysis.expiredContracts.filter(c =>
+        c.partNumber.includes('SSV00S03095') || c.partNumber.includes('SSV00S03096') ||
+        c.partNumber.includes('SSV00S05160') || c.partNumber.includes('SSV00S05161') ||
+        c.partNumber.includes('WGC02001') || c.partNumber.includes('WGC02002') || c.partNumber.includes('WGC01001')
+      );
+      const expiredStorageContracts = contractAnalysis.expiredContracts.filter(c =>
+        c.partNumber.includes('SSV00S02783') || c.partNumber.includes('SSV00S05159') || c.partNumber.includes('WGC01003')
+      );
+
+      // Show alert if overages might be explained by expired contracts
+      if (hasOverage && (expiredCameraContracts.length > 0 || expiredStorageContracts.length > 0)) {
+        const alert = document.createElement('div');
+        alert.className = 'info-message';
+        alert.style.background = 'var(--status-yellow)';
+        alert.style.borderColor = 'var(--status-yellow-text)';
+        alert.innerHTML = `<strong>⚠ Note:</strong> Detected overages may be explained by ${expiredCameraContracts.length + expiredStorageContracts.length} expired camera/storage contract(s). Devices deployed under expired licenses still consume storage.`;
+        contractsContent.appendChild(alert);
+      }
+
+      // Expiring Contracts
+      if (contractAnalysis.expiringContracts.length > 0) {
+        const expiringHeader = document.createElement('div');
+        expiringHeader.className = 'detail-label';
+        expiringHeader.style.marginTop = '16px';
+        expiringHeader.style.marginBottom = '8px';
+        expiringHeader.innerHTML = '🔔 EXPIRING SOON';
+        contractsContent.appendChild(expiringHeader);
+
+        contractAnalysis.expiringContracts.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'contract-row-item';
+          const statusClass = c.daysUntil < 30 ? 'contract-expires-urgent' : 'contract-expires-soon';
+          item.innerHTML = `
+            <div class="detail-label">${c.contract}</div>
+            <div class="detail-value" style="font-size: 12px; color: var(--text-secondary);">${c.partNumber}</div>
+            <div class="detail-value">${c.endDate}</div>
+            <div class="${statusClass}">${c.daysUntil} days remaining</div>
+          `;
+          contractsContent.appendChild(item);
+        });
+      }
+
+      // Active Contracts
+      if (contractAnalysis.activeContracts.length > 0) {
+        const activeHeader = document.createElement('div');
+        activeHeader.className = 'detail-label';
+        activeHeader.style.marginTop = '16px';
+        activeHeader.style.marginBottom = '8px';
+        activeHeader.innerHTML = '✓ ACTIVE CONTRACTS';
+        contractsContent.appendChild(activeHeader);
+
+        contractAnalysis.activeContracts.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'contract-row-item';
+          item.innerHTML = `
+            <div class="detail-label">${c.contract}</div>
+            <div class="detail-value" style="font-size: 12px; color: var(--text-secondary);">${c.partNumber}</div>
+            <div class="detail-value">${c.endDate}</div>
+            <div style="color: var(--status-green-text);">${c.daysUntil} days remaining</div>
+          `;
+          contractsContent.appendChild(item);
+        });
+      }
+
+      // Expired Contracts
+      if (contractAnalysis.expiredContracts.length > 0) {
+        const expiredHeader = document.createElement('div');
+        expiredHeader.className = 'detail-label';
+        expiredHeader.style.marginTop = '16px';
+        expiredHeader.style.marginBottom = '8px';
+        expiredHeader.innerHTML = '❌ EXPIRED CONTRACTS';
+        contractsContent.appendChild(expiredHeader);
+
+        contractAnalysis.expiredContracts.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'contract-row-item';
+          item.style.opacity = '0.7';
+          const daysExpired = Math.abs(c.daysUntil);
+          item.innerHTML = `
+            <div class="detail-label">${c.contract}</div>
+            <div class="detail-value" style="font-size: 12px; color: var(--text-secondary);">${c.partNumber}</div>
+            <div class="detail-value">${c.endDate}</div>
+            <div style="color: var(--status-red-text);">Expired ${daysExpired} days ago</div>
+          `;
+          contractsContent.appendChild(item);
+        });
+      }
+
+      if (contractAnalysis.activeContracts.length === 0 && contractAnalysis.expiringContracts.length === 0 && contractAnalysis.expiredContracts.length === 0) {
+        contractsContent.innerHTML = '<div class="no-data">No contracts found</div>';
+      }
+
+      const panel = document.getElementById('agency-detail-panel');
+      const overlay = document.getElementById('side-panel-overlay');
+      panel.classList.add('open');
+      overlay.classList.add('show');
+    }
+
+    function closeDetailPanel() {
+      document.getElementById('agency-detail-panel').classList.remove('open');
+      document.getElementById('side-panel-overlay').classList.remove('show');
+    }
+
+    function switchDetailTab(tabName) {
+      document.querySelectorAll('.side-panel-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.side-panel-tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('detail-' + tabName).classList.add('active');
+    }
+
+    function filterByHealth(btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterAgencies();
+    }
+
+    function filterAgencies() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const healthFilter = document.querySelector('.filter-btn.active').dataset.filter;
+      const tbody = document.getElementById('agencies-tbody');
+      let visibleCount = 0;
+
+      Array.from(tbody.children).forEach(row => {
+        const agencyName = row.textContent.toLowerCase();
+        const statusBadge = row.querySelector('.status-badge').textContent.toLowerCase();
+        const matchesSearch = agencyName.includes(searchTerm);
+
+        let matchesHealth = true;
+        if (healthFilter !== 'all') {
+          matchesHealth = statusBadge.includes(healthFilter);
+        }
+
+        if (matchesSearch && matchesHealth) {
+          row.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+
+      updateNoResults();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterAgencies();
+    }
+
+    function updateNoResults() {
+      const visible = document.querySelectorAll('#agencies-tbody tr:not(.hidden)').length;
+      document.getElementById('no-results').classList.toggle('hidden', visible > 0);
+    }
+
+    function showError(message) {
+      const content = document.getElementById('content');
+      content.innerHTML = `<div class="error-message">${message}</div>`;
+      content.classList.remove('hidden');
+      document.getElementById('loading').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
