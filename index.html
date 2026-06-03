@@ -878,14 +878,32 @@
 
       console.log(`MCN Index: ${Object.keys(mcnIndex).length} total MCNs, ${Object.keys(filteredIndex).length} with data for display`);
 
-      // Log Texas DPS specifically
+      // Log Texas DPS specifically with matched department name
       const texasMCN = '1000031196';
       if (filteredIndex[texasMCN]) {
         const texas = filteredIndex[texasMCN];
+
+        // Find which storage department was matched
+        let matchedStorageDept = null;
+        if (texas.storage) {
+          const texasNormalized = normalize(texas.accountName);
+          for (const deptName in storageByDept) {
+            const normalizedDept = normalize(deptName);
+            const mcn = accountNameLower[normalizedDept] ||
+                       findClosestMatch(normalizedDept, Object.keys(accountNameLower), accountNameLower);
+            if (mcn === texasMCN) {
+              matchedStorageDept = deptName;
+              break;
+            }
+          }
+        }
+
         console.log(`Texas DPS (${texasMCN}):`, {
           accountName: texas.accountName,
           hasStorage: !!texas.storage,
           storageGB: texas.storage?.gb?.toFixed(2),
+          storageDate: texas.storage?.date,
+          matchedStorageDept: matchedStorageDept,
           hasDevices: !!texas.devices,
           hasActiveCameras: !!texas.activeCameras,
           contracts: texas.contracts.length
