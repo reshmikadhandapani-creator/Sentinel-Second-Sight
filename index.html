@@ -563,7 +563,7 @@
     <div class="side-panel-content">
       <div id="detail-storage" class="side-panel-tab-content active">
         <div class="detail-group">
-          <div class="detail-label">Storage Capacity</div>
+          <div class="detail-label">Current Storage Usage</div>
           <div class="detail-value">
             <div id="storage-current">0 GB</div>
             <div class="capacity-bar">
@@ -804,8 +804,11 @@
 
       // Create normalized lookup for department name matching
       const accountNameLower = {};
+      const mcnByAccountName = {}; // Track MCN by exact account name for fallback
       for (const mcn in mcnIndex) {
-        accountNameLower[normalize(mcnIndex[mcn].accountName)] = mcn;
+        const normalized = normalize(mcnIndex[mcn].accountName);
+        accountNameLower[normalized] = mcn;
+        mcnByAccountName[mcnIndex[mcn].accountName] = mcn;
       }
 
       // Link storage data using department name matching
@@ -816,6 +819,12 @@
 
         if (mcn && mcnIndex[mcn]) {
           mcnIndex[mcn].storage = storageByDept[deptName];
+          // Debug logging for Texas DPS
+          if (deptName.includes('Texas') && deptName.includes('Public')) {
+            console.log('✓ Matched storage for:', deptName, 'to MCN:', mcn, mcnIndex[mcn].accountName, storageByDept[deptName].gb.toFixed(2), 'GB');
+          }
+        } else if (deptName.includes('Texas') && deptName.includes('Public')) {
+          console.log('✗ No match found for:', deptName, '(normalized:', normalizedDept, ')');
         }
       }
 
@@ -871,7 +880,7 @@
 
       for (const candidate of candidates) {
         const score = stringSimilarity(target, candidate);
-        if (score > bestScore && score > 0.6) {
+        if (score > bestScore && score > 0.55) { // Lower threshold to 0.55 for better matching
           bestScore = score;
           best = candidate;
         }
@@ -944,8 +953,7 @@
         GB_STORAGE: [
           'SSV00S02783A', // COMMANDCENTRAL CLOUD STORAGE GB
           'SSV00S02840A', // COMMANDCENTRAL STORAGE GB
-          'SSV00S02870A', // SOFTWARE, INCLUDED COMMANDCENTRAL STORAGE GB
-          'SSV00S01614A'  // CC VAULT BLOCK OF STORAGE
+          'SSV00S02870A'  // SOFTWARE, INCLUDED COMMANDCENTRAL STORAGE GB
         ],
         // Storage measured in TB
         TB_STORAGE: [
@@ -971,7 +979,7 @@
 
         if (qty === 0 || !partNumber) return;
 
-        // Only count ACTIVE line items (check Line Status, not Header Status)
+        // Only count ACTIVE line items (check Line Status only)
         if (!lineStatus.includes('ACTIVE')) {
           return;
         }
@@ -1090,7 +1098,7 @@
 
         if (qty === 0 || !partNumber) return;
 
-        // Only count ACTIVE line items (check Line Status, not Header Status)
+        // Only count ACTIVE line items (check Line Status only)
         if (!lineStatus.includes('ACTIVE')) {
           return;
         }
@@ -1136,10 +1144,15 @@
           // Check description to determine device type
           if (desc.includes('BODY') || desc.includes('BWC')) {
             authorizedCameras.BodyWorn += qty;
-          } else {
-            // Default to in-car for VideoManager (most common)
-            // These are typically in-car systems with 1 device = 1 camera license
+          } else if (desc.includes('IN-CAR') || desc.includes('IN CAR') || desc.includes('ICV')) {
             authorizedCameras.InCar += qty;
+          } else {
+            // For ambiguous WGC01001 "UNLIMITED ASSIGNED" products,
+            // split proportionally based on actual device deployment
+            // This will be calculated after we know actual device counts
+            // Store in a temporary bucket for now
+            if (!authorizedCameras._ambiguous) authorizedCameras._ambiguous = 0;
+            authorizedCameras._ambiguous += qty;
           }
           hasUnlimitedStorage = true;
         }
@@ -1153,6 +1166,21 @@
         BodyWorn: actualBodyWorn,
         InCar: actualInCar
       };
+
+      // Handle ambiguous WGC01001 licenses by distributing proportionally
+      if (authorizedCameras._ambiguous && (actualBodyWorn > 0 || actualInCar > 0)) {
+        const totalActual = actualBodyWorn + actualInCar;
+        const bodyWornRatio = actualBodyWorn / totalActual;
+        const inCarRatio = actualInCar / totalActual;
+
+        authorizedCameras.BodyWorn += Math.round(authorizedCameras._ambiguous * bodyWornRatio);
+        authorizedCameras.InCar += Math.round(authorizedCameras._ambiguous * inCarRatio);
+        delete authorizedCameras._ambiguous;
+      } else if (authorizedCameras._ambiguous) {
+        // If no actual devices, assume all in-car (legacy behavior)
+        authorizedCameras.InCar += authorizedCameras._ambiguous;
+        delete authorizedCameras._ambiguous;
+      }
 
       let overages = [];
 
@@ -1202,29 +1230,31 @@
         const contractNumber = c['contract_number'] || '';
         const description = c['Item Description'] || 'Unknown';
 
-        if (!endDateStr) return;
+        // Skip if no line status (legacy contracts we're ignoring)
+        if (!lineStatusCode) return;
 
-        // De-duplicate by contract number + part number
-        const key = `${contractNumber}|${partNumber}`;
+        // De-duplicate by contract number + part number (or order number if no contract number)
+        const orderNumber = c['Order Number'] || '';
+        const key = `${contractNumber || orderNumber}|${partNumber}`;
         if (seen.has(key)) return;
         seen.add(key);
 
-        const endDate = new Date(endDateStr);
-        const daysUntil = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+        const isActive = lineStatusCode.includes('ACTIVE');
+        const isExpired = lineStatusCode.includes('EXPIRED') || lineStatusCode.includes('TERMINATED') || lineStatusCode.includes('CLOSED');
 
         const contractInfo = {
           partNumber,
           contract: description,
-          endDate: endDateStr,
-          daysUntil,
+          endDate: endDateStr || 'No end date',
+          daysUntil: endDateStr ? Math.floor((new Date(endDateStr) - today) / (1000 * 60 * 60 * 24)) : 999999,
           lineStatusCode
         };
 
-        // Categorize contracts based on Line Status
-        if (lineStatusCode.includes('EXPIRED') || lineStatusCode.includes('TERMINATED') || lineStatusCode.includes('CLOSED')) {
+        // Categorize contracts
+        if (isExpired) {
           expired.push(contractInfo);
-        } else if (lineStatusCode.includes('ACTIVE')) {
-          if (daysUntil < 90) {
+        } else if (isActive) {
+          if (endDateStr && contractInfo.daysUntil < 90) {
             expiring.push(contractInfo);
           } else {
             active.push(contractInfo);
@@ -1349,6 +1379,7 @@
         barElement.classList.remove('warning', 'critical');
         if (barPercent >= 80 && barPercent < 95) barElement.classList.add('warning');
         if (barPercent >= 95) barElement.classList.add('critical');
+        document.querySelector('.capacity-bar').style.display = 'block';
       } else if (hasUnlimitedStorage) {
         // Unlimited storage - no capacity bar needed
         document.getElementById('storage-limit').innerHTML = `<span style="color: var(--accent-teal); font-style: italic;">Unlimited storage via camera licenses</span>`;
@@ -1358,12 +1389,13 @@
         barElement.classList.remove('warning', 'critical');
         document.querySelector('.capacity-bar').style.display = 'none';
       } else {
-        // No storage data
-        document.getElementById('storage-limit').textContent = 'No storage contracts found';
+        // No active contracts found - hide capacity bar and show warning
+        document.getElementById('storage-limit').innerHTML = `<span style="color: var(--status-yellow-text); font-style: italic;">⚠ No active storage contracts found</span>`;
         const barElement = document.getElementById('storage-bar');
         barElement.style.width = '0%';
         barElement.textContent = '';
         barElement.classList.remove('warning', 'critical');
+        document.querySelector('.capacity-bar').style.display = 'none';
       }
 
       // Storage breakdown
